@@ -1,0 +1,7 @@
+{{ range $i, $l := .leds }}
+<form action="./{{ $i }}" method="post">
+  <button class="btn btn-primary m-2" type="submit">{{ $l.Name }}</button>
+</form>
+{{ else }}
+<p>no leds! :D</p>
+{{ end }}
