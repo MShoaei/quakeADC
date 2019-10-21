@@ -1,3 +1,4 @@
 .idea/
-rpiGo
+rpiCMD
+!rpiCMD/
 vendor/
