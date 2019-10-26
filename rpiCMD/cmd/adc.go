@@ -350,6 +350,84 @@ var adcPowerMode = &cobra.Command{
 	},
 }
 
+var adcGeneralConfiguration = &cobra.Command{
+	Use:   "GeneralConf",
+	Short: "",
+	Long:  "",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var (
+			err   error
+			rx    []byte = make([]byte, 2)
+			h, l  uint8
+			s     uint8
+			write bool
+			flags = cmd.Flags()
+		)
+
+		write, err = flags.GetBool("write")
+		if err != nil {
+			return err
+		}
+		if !write {
+			h = h | 0x80
+		}
+
+		h |= driver.GeneralConfiguration
+
+		s, err = flags.GetUint8("retime-en")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x10
+		default:
+			return fmt.Errorf("expected 0 or 1 for retime-en, got %d", s)
+		}
+
+		s, err = flags.GetUint8("vcm-pd")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x08
+		default:
+			return fmt.Errorf("expected 0 or 1 for vcm-pd, got %d", s)
+		}
+
+		// reserved bit(bit 3), should be 1
+		l |= 0x04
+
+		s, err = flags.GetUint8("vcm-vsel")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x01
+		case 2:
+			l |= 0x02
+		case 3:
+			l |= 0x03
+		default:
+			return fmt.Errorf("expected 0..3 for vcm-vsel, got %d", s)
+		}
+		err = adcConnection.Transmit([]byte{h, l}, rx)
+
+		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+			log.Println([]byte{h, l}, rx)
+		}
+		return err
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(adcCmd)
 	adcCmd.AddCommand(adcChStandby, adcChModeA, adcChModeB, adcChModeSelect, adcPowerMode)
@@ -392,4 +470,11 @@ func init() {
 	adcPowerMode.Flags().Uint8("power", 0, "0: Low power, 2: Median, 3: Fast")
 	adcPowerMode.Flags().Uint8("lvds-clk", 0, "0: disable LVDS clock, 1: enable LVDS clock")
 	adcPowerMode.Flags().Uint8("mclk-div", 0, "0: set to MCLK/32 for low power mode, 2: set to MCLK/8 for median mode, 3: set to MCLK/4 for fast mode")
+
+	//------------------------
+
+	adcGeneralConfiguration.Flags().Bool("write", false, "set the write bit")
+	adcGeneralConfiguration.Flags().Uint8("retime-en", 0, "SYNC_OUT signal retime enable bit. 0: disabled, 1: enabled")
+	adcGeneralConfiguration.Flags().Uint8("vcm-pd", 0, "VCM buffer power-down. 0: enabled, 1: disabled")
+	adcGeneralConfiguration.Flags().Uint8("vcm-vsel", 0, "VCM voltage select bits. 0: (AVDD1 − AVSS)/2 V, 1: 1.65 V, 2: 2.5 V, 3: 2.14 V")
 }
