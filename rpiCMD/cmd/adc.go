@@ -419,6 +419,7 @@ var adcGeneralConfiguration = &cobra.Command{
 		default:
 			return fmt.Errorf("expected 0..3 for vcm-vsel, got %d", s)
 		}
+
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
@@ -428,6 +429,7 @@ var adcGeneralConfiguration = &cobra.Command{
 	},
 }
 
+// TODO: Reset needs 2 succesive commands which should be implemented.
 var adcDataControl = &cobra.Command{
 	Use:   "DataControl",
 	Short: "",
@@ -441,6 +443,59 @@ var adcDataControl = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+
+		write, err = flags.GetBool("write")
+		if err != nil {
+			return err
+		}
+		if !write {
+			h = h | 0x80
+		}
+
+		h |= driver.DataControl
+
+		s, err = flags.GetUint8("spi-sync")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x80
+		default:
+			return fmt.Errorf("expected 0 or 1 for spi-sync, got %d", s)
+		}
+
+		s, err = flags.GetUint8("single-shot")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x10
+		default:
+			return fmt.Errorf("expected 0 or 1 for single-shot, got %d", s)
+		}
+
+		s, err = flags.GetUint8("spi-reset")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x01
+		case 2:
+			l |= 0x02
+		case 3:
+			l |= 0x03
+		default:
+			return fmt.Errorf("expected 0 or 1 for spi-sync, got %d", s)
+		}
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
@@ -464,6 +519,50 @@ var adcInterfaceConfiguration = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+
+		write, err = flags.GetBool("write")
+		if err != nil {
+			return err
+		}
+		if !write {
+			h = h | 0x80
+		}
+
+		h |= driver.InterfaceConfiguration
+
+		s, err = flags.GetUint8("crc-sel")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x10
+		case 2:
+			l |= 0x20
+		case 3:
+			l |= 0x30
+		default:
+			return fmt.Errorf("expected 0..3 for crc-sel, got %d", s)
+		}
+
+		s, err = flags.GetUint8("dclk-div")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x01
+		case 2:
+			l |= 0x02
+		case 3:
+			l |= 0x03
+		default:
+			return fmt.Errorf("expected 0..3 for dclk-div, got %d", s)
+		}
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
@@ -1491,4 +1590,18 @@ func init() {
 	adcGeneralConfiguration.Flags().Uint8("retime-en", 0, "SYNC_OUT signal retime enable bit. 0: disabled, 1: enabled")
 	adcGeneralConfiguration.Flags().Uint8("vcm-pd", 0, "VCM buffer power-down. 0: enabled, 1: disabled")
 	adcGeneralConfiguration.Flags().Uint8("vcm-vsel", 0, "VCM voltage select bits. 0: (AVDD1 − AVSS)/2 V, 1: 1.65 V, 2: 2.5 V, 3: 2.14 V")
+
+	//------------------------
+
+	adcDataControl.Flags().Bool("write", false, "set the write bit")
+	adcDataControl.Flags().Uint8("spi-sync", 1, "Software synchronization of the AD7768-4. This command has the same effect as sending a signal pulse to the START pin. 0: Change to SPI_SYNC low, 1: Change to SPI_SYNC high")
+	adcDataControl.Flags().Uint8("single-shot", 0, "One-shot mode. Enables one-shot mode. In one-shot mode, the AD7768-4 output a conversion result in response to a SYNC_IN rising edge. 0: Disabled, 1: Enabled")
+	adcDataControl.Flags().Uint8("spi-reset", 0, "Soft reset. Two successive commands must be received in the correct order to generate a reset. 0: No effect, 1: No effect, 2: Second reset command, 3: First reset command")
+
+	//------------------------
+
+	adcInterfaceConfiguration.Flags().Bool("write", false, "set the write bit")
+	adcInterfaceConfiguration.Flags().Uint8("crc-sel", 0, "CRC select. These bits allow the user to implement a CRC on the data interface. 0: No CRC. Status bits with every conversion, 1: Replace the header with CRC message every 4 samples, 2: Replace the header with CRC message every 16 samples, 3: Replace the header with CRC message every 16 samples")
+	adcInterfaceConfiguration.Flags().Uint8("dclk-div", 0, "DCLK divider. These bits control division of the DCLK clock used to clock out conversion data on the DOUTx pins. 0: Divide by 8, 1: Divide by 4, 2: Divide by 2, 3: No division")
+
 }
