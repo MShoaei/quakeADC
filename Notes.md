@@ -86,4 +86,81 @@ Each ADC result comprises **32 bits**. The first **8** bits are the header statu
 | Channel 6 |      1       |      1       |      0       |
 | Channel 7 |      1       |      1       |      1       |
 
-## delete
+## Commands
+
+---
+
+### Data Control
+
+#### SPI_SYNC
+
+Software synchronization of the AD7768-4. This command has the same
+effect as sending a signal pulse to the START pin. To operate the SPI_SYNC,
+the user must write to this bit two separate times. First, write a zero,
+putting SPI_SYNC low, and then write a 1 to set SPI_SYNC logic high
+again. The SPI_SYNC command is recognized after the last rising edge of
+SCLK in the SPI instruction where the SPI_SYNC bit is changed from low to
+high. The SPI_SYNC command is then output synchronous to the AD7768-4
+MCLK on the SYNC_OUT pin. The user must connect the SYNC_OUT signal
+to the SYNC_IN pin on the PCB. The SYNC_OUT pin can also be routed to
+the SYNC_IN pins of other AD7768-4 devices, allowing larger channel
+count simultaneous sampling systems. As per any synchronization pulse
+seen by the SYNC_IN pin, the digital filters of the AD7768-4 are reset. The
+full settling time of the filters must elapse before data is output on the
+data interface. In a daisy-chained system of AD7768-4 devices, two
+successive synchronization pulses must be applied to guarantee that all
+ADCs are synchronized. Two synchronization pulses are also required in a
+system of more than one AD7768-4 device sharing a single MCLK signal,
+where the DRDY pin of only one device is used to detect new data.
+
+0: Change to SPI_SYNC low.
+
+1: Change to SPI_SYNC high.
+
+#### SINGLE_SHOT_EN
+
+One-shot mode. Enables one-shot mode. In one-shot mode, the AD7768-4
+output a conversion result in response to a SYNC_IN rising edge.
+Disabled.
+Enabled.
+
+#### SPI_RESET
+
+Soft reset. These bits allow a full device reset over the SPI port. **Two** successive commands must be received in the correct order to generate a reset: first, write **0x03** to the soft reset register, and then write **0x02** to the soft reset register. This sequence causes the digital core to reset and all registers return to their default values. Following a soft reset, if the SPI master sends a command to the AD7768-4, the devices respond on the
+next frame to that command with an output of **0x0E00**.
+
+00: No effect.
+
+01: No effect.
+
+10: Second reset command.
+
+11: First reset command.
+
+---
+
+### INTERFACE CONFIGURATION
+
+#### CRC_SELECT
+
+CRC select. These bits allow the user to implement a CRC on the data interface. When selected, the CRC replaces the header every fourth or 16th output sample depending on the CRC option chosen. There are two options for the CRC; both use the same polynomial: x 8 + x 2 + x + 1. The options offer the user the ability to reduce the duty cycle of the CRC calculation by performing it less often: in the case of having it every 16th sample or more often in the case of every fourth conversion. The CRC is calculated on a per channel basis and it includes conversion data only.
+
+00: No CRC. Status bits with every conversion.
+
+01: Replace the header with CRC message every 4 samples.
+
+10: Replace the header with CRC message every 16 samples.
+
+11: Replace the header with CRC message every 16 samples.
+
+#### DCLK_DIV
+
+DCLK divider. These bits control division of the DCLK clock used to clock out conversion data on the DOUTx pins. The DCLK signal is derived from the MCLK applied to the AD7768-4. The DCLK divide mode allows the user to optimize the DCLK output to fit the application. Optimizing the DCLK per application depends on the requirements of the user. When the AD7768-4 are using the highest capacity output on the fewest DOUTx pins, for example, running in decimate by 32 using the DOUT0 and DOUT1 pins, the DCLK must equal the MCLK; thus, in this case, choosing the no division setting is the only way the user can output all the data within the conversion period. There are other cases, however, when the ADC may be running in fast mode with high decimation rates, or in median or low power mode where the DCLK does not need to run at the same speed as MCLK. In these cases, the DCLK divide allows the user to reduce the clock speed and makes routing and isolating such signals easier.
+
+00: Divide by 8.
+
+01: Divide by 4.
+
+10: Divide by 2.
+
+11: No division.
