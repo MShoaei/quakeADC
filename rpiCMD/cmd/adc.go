@@ -3,10 +3,13 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/MShoaei/rpiGo/driver"
-
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"gobot.io/x/gobot/drivers/gpio"
+	"gobot.io/x/gobot/platforms/raspi"
 )
 
 // adcCmd represents the adc command
@@ -46,6 +49,10 @@ to quickly create a Cobra application.`,
 		}
 
 		adcConnection, err = driver.GetSpiConnection(bus, chip, mode, 8, speed)
+
+		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+			log.Println(speed)
+		}
 		return err
 	},
 }
@@ -88,11 +95,11 @@ var adcChStandby = &cobra.Command{
 			l |= 0x01
 		}
 
-		//TODO: rx == tx after 2 consecetive transmits!!! Why?
+		//TODO: rx == tx after 2 consecutive transmits!!! Why?
 		// fmt.Println(rx)
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -152,7 +159,7 @@ var adcChModeA = &cobra.Command{
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -211,7 +218,7 @@ var adcChModeB = &cobra.Command{
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -258,7 +265,7 @@ var adcChModeSelect = &cobra.Command{
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -343,7 +350,7 @@ var adcPowerMode = &cobra.Command{
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -422,14 +429,14 @@ var adcGeneralConfiguration = &cobra.Command{
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
 	},
 }
 
-// TODO: Reset needs 2 succesive commands which should be implemented.
+// TODO: Reset needs 2 successive commands which should be implemented.
 var adcDataControl = &cobra.Command{
 	Use:   "DataControl",
 	Short: "",
@@ -499,7 +506,7 @@ var adcDataControl = &cobra.Command{
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -566,7 +573,7 @@ var adcInterfaceConfiguration = &cobra.Command{
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -587,9 +594,32 @@ var adcBISTControl = &cobra.Command{
 			flags = cmd.Flags()
 		)
 
+		write, err = flags.GetBool("write")
+		if err != nil {
+			return err
+		}
+		if !write {
+			h = h | 0x80
+		}
+
+		h |= driver.BISTControl
+
+		s, err = flags.GetUint8("ram-bist-start")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x01
+		default:
+			return fmt.Errorf("expected 0 or 1 for ram-bist-start, got %d", s)
+		}
+
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -602,20 +632,20 @@ var adcDeviceStatus = &cobra.Command{
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    []byte = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err  error
+			rx   []byte = make([]byte, 2)
+			h, l uint8
 		)
+
+		h |= 0x80
+		h |= driver.DeviceStatus
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
-		}
+		log.Println([]byte{h, l}, rx)
+
 		return err
+
 	},
 }
 
@@ -625,20 +655,20 @@ var adcRevisionID = &cobra.Command{
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    []byte = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err  error
+			rx   []byte = make([]byte, 2)
+			h, l uint8
 		)
+
+		h |= 0x80
+		h |= driver.RevisionID
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
-		}
+		log.Println([]byte{h, l}, rx)
+
 		return err
+
 	},
 }
 
@@ -656,15 +686,104 @@ var adcGPIOControl = &cobra.Command{
 			flags = cmd.Flags()
 		)
 
+		write, err = flags.GetBool("write")
+		if err != nil {
+			return err
+		}
+		if !write {
+			h = h | 0x80
+		}
+
+		h |= driver.GPIOControl
+
+		s, err = flags.GetUint8("ugpio-en")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x80
+		default:
+			return fmt.Errorf("expected 0 or 1 for ugpio-en, got %d", s)
+		}
+
+		s, err = flags.GetUint8("gpio4")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x10
+		default:
+			return fmt.Errorf("expected 0 or 1 for gpio4, got %d", s)
+		}
+
+		s, err = flags.GetUint8("gpio3")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x08
+		default:
+			return fmt.Errorf("expected 0 or 1 for gpio3, got %d", s)
+		}
+
+		s, err = flags.GetUint8("gpio2")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x04
+		default:
+			return fmt.Errorf("expected 0 or 1 for gpio2, got %d", s)
+		}
+
+		s, err = flags.GetUint8("gpio1")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x02
+		default:
+			return fmt.Errorf("expected 0 or 1 for gpio1, got %d", s)
+		}
+
+		s, err = flags.GetUint8("gpio0")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x01
+		default:
+			return fmt.Errorf("expected 0 or 1 for gpio0, got %d", s)
+		}
+
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
 	},
 }
 
+// TODO: Need better explanation for flags
 var adcGPIOWriteData = &cobra.Command{
 	Use:   "GPIOWriteData",
 	Short: "",
@@ -679,34 +798,109 @@ var adcGPIOWriteData = &cobra.Command{
 			flags = cmd.Flags()
 		)
 
+		write, err = flags.GetBool("write")
+		if err != nil {
+			return err
+		}
+		if !write {
+			h = h | 0x80
+		}
+
+		h |= driver.GPIOWriteData
+
+		s, err = flags.GetUint8("gpio4")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x10
+		default:
+			return fmt.Errorf("expected 0 or 1 for gpio4, got %d", s)
+		}
+
+		s, err = flags.GetUint8("gpio3")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x08
+		default:
+			return fmt.Errorf("expected 0 or 1 for gpio3, got %d", s)
+		}
+
+		s, err = flags.GetUint8("gpio2")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x04
+		default:
+			return fmt.Errorf("expected 0 or 1 for gpio2, got %d", s)
+		}
+
+		s, err = flags.GetUint8("gpio1")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x02
+		default:
+			return fmt.Errorf("expected 0 or 1 for gpio1, got %d", s)
+		}
+
+		s, err = flags.GetUint8("gpio0")
+		if err != nil {
+			return err
+		}
+		switch s {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x01
+		default:
+			return fmt.Errorf("expected 0 or 1 for gpio0, got %d", s)
+		}
+
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
 	},
 }
 
+// TODO: Need Implementation
 var adcGPIOReadData = &cobra.Command{
 	Use:   "GPIOReadData",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    []byte = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err  error
+			rx   []byte = make([]byte, 2)
+			h, l uint8
 		)
+
+		h |= 0x80
+		h |= driver.GPIOReadData
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
-		}
+		log.Println([]byte{h, l}, rx)
+
 		return err
 	},
 }
@@ -724,10 +918,11 @@ var adcPrechargeBuffer1 = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -747,10 +942,11 @@ var adcPrechargeBuffer2 = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -771,10 +967,11 @@ var adcPositiveRefPrechargeBuf = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -795,10 +992,11 @@ var adcNegativeRefPrechargeBuf = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -818,10 +1016,11 @@ var adcCH0OffsetMSB = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -841,10 +1040,11 @@ var adcCH0OffsetMID = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -864,10 +1064,11 @@ var adcCH0OffsetLSB = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -887,10 +1088,11 @@ var adcCH1OffsetMSB = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -910,10 +1112,11 @@ var adcCH1OffsetMID = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -933,10 +1136,11 @@ var adcCH1OffsetLSB = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -956,10 +1160,11 @@ var adcCH2OffsetMSB = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -979,10 +1184,11 @@ var adcCH2OffsetMID = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1002,10 +1208,11 @@ var adcCH2OffsetLSB = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1025,10 +1232,11 @@ var adcCH3OffsetMSB = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1048,10 +1256,11 @@ var adcCH3OffsetMID = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1071,10 +1280,11 @@ var adcCH3OffsetLSB = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1094,10 +1304,11 @@ var adcCH0GainMSB = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1117,10 +1328,11 @@ var adcCH0GainMID = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1140,10 +1352,11 @@ var adcCH0GainLSB = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1163,10 +1376,11 @@ var adcCH1GainMSB = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1186,10 +1400,11 @@ var adcCH1GainMID = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1209,10 +1424,11 @@ var adcCH1GainLSB = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1232,10 +1448,11 @@ var adcCH2GainMSB = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1255,10 +1472,11 @@ var adcCH2GainMID = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1278,10 +1496,11 @@ var adcCH2GainLSB = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1301,10 +1520,11 @@ var adcCH3GainMSB = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1324,10 +1544,11 @@ var adcCH3GainMID = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1347,10 +1568,11 @@ var adcCH3GainLSB = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1370,10 +1592,11 @@ var adcCH0SyncOffset = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1393,10 +1616,11 @@ var adcCH1SyncOffset = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1416,10 +1640,11 @@ var adcCH2SyncOffset = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1439,10 +1664,11 @@ var adcCH3SyncOffset = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1462,10 +1688,11 @@ var adcDiagnosticRX = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1485,10 +1712,11 @@ var adcDiagnosticMuxControl = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1508,10 +1736,11 @@ var adcDiagnosticDelayControl = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
@@ -1531,77 +1760,204 @@ var adcChopControl = &cobra.Command{
 			write bool
 			flags = cmd.Flags()
 		)
+		log.Println(s, write, flags)
 
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
 			log.Println([]byte{h, l}, rx)
 		}
 		return err
 	},
 }
 
-func init() {
-	rootCmd.AddCommand(adcCmd)
-	adcCmd.AddCommand(adcChStandby, adcChModeA, adcChModeB, adcChModeSelect, adcPowerMode)
+var adcResetSequence = &cobra.Command{
+	Use:   "reset",
+	Short: "Perform hard reset",
+	Long:  `Hard reset is recommended before using the adc`,
+	Run: func(cmd *cobra.Command, args []string) {
+		r := raspi.NewAdaptor()
+		pin := gpio.NewDirectPinDriver(r, "22")
 
-	adcCmd.PersistentFlags().Int("bus", 0, "spi bus number and is usually 0")
-	adcCmd.PersistentFlags().Int("chip", 0, "spi chipSelect number")
-	adcCmd.PersistentFlags().Int("mode", 0, "spi mode number [0..3]")
-	adcCmd.PersistentFlags().Int64("speed", 50000, "spi connection speed in Hz")
-	adcCmd.PersistentFlags().BoolP("debug", "V", false, "Debug Mode. Print Sent and recived values.")
-	c := adcCmd.PersistentFlags().Lookup("debug")
+		_ = pin.DigitalWrite(0)
+		time.Sleep(2 * time.Second)
+		_ = pin.DigitalWrite(1)
+	},
+}
+
+func init() {
+	var f *pflag.FlagSet
+	rootCmd.AddCommand(adcCmd)
+	adcCmd.AddCommand(adcChStandby, adcChModeA, adcChModeB, adcChModeSelect,
+		adcPowerMode, adcGeneralConfiguration, adcDataControl, adcInterfaceConfiguration, adcBISTControl, adcDeviceStatus,
+		adcRevisionID, adcGPIOControl, adcGPIOWriteData, adcGPIOReadData, adcPrechargeBuffer1, adcPrechargeBuffer2,
+		adcPositiveRefPrechargeBuf, adcNegativeRefPrechargeBuf,
+		adcCH0OffsetMSB, adcCH0OffsetMID, adcCH0OffsetLSB, adcCH1OffsetMSB, adcCH1OffsetMID, adcCH1OffsetLSB,
+		adcCH2OffsetMSB, adcCH2OffsetMID, adcCH2OffsetLSB, adcCH3OffsetMSB, adcCH3OffsetMID, adcCH3OffsetLSB,
+		adcCH0GainMSB, adcCH0GainMID, adcCH0GainLSB, adcCH1GainMSB, adcCH1GainMID, adcCH1GainLSB,
+		adcCH2GainMSB, adcCH2GainMID, adcCH2GainLSB, adcCH3GainMSB, adcCH3GainMID, adcCH3GainLSB,
+		adcCH0SyncOffset, adcCH1SyncOffset, adcCH2SyncOffset, adcCH3SyncOffset,
+		adcDiagnosticRX, adcDiagnosticMuxControl, adcDiagnosticDelayControl, adcChopControl,
+		adcResetSequence)
+
+	f = adcCmd.PersistentFlags()
+	f.Int("bus", 0, "spi bus number and is usually 0")
+	f.Int("chip", 0, "spi chipSelect number")
+	f.Int("mode", 0, "spi mode number [0..3]")
+	f.Int64("speed", 50000, "spi connection speed in Hz")
+	f.BoolP("debug", "V", false, "Debug Mode. Print Sent and received values.")
+	c := f.Lookup("debug")
 	c.NoOptDefVal = "true"
-	c.Hidden = true
+	f.SortFlags = false
 
 	// ------------------------
 
-	adcChStandby.Flags().Bool("write", false, "set the write bit")
+	f = adcChStandby.Flags()
+	f.Bool("write", false, "set the write bit")
 	// true==standby
 	// false==enabled
-	adcChStandby.Flags().BoolSlice("ch", []bool{true, true, true, true}, "channels 0..3 standy mode. true/t: Standby, false/f: Enabled")
+	f.BoolSlice("ch", []bool{true, true, true, true}, "channels 0..3 standy mode. true/t: Standby, false/f: Enabled")
+	f.SortFlags = false
 
-	// -------------------------
+	// ------------------------
 
-	adcChModeA.Flags().Bool("write", false, "set the write bit")
-	adcChModeA.Flags().Uint8("f-type", 1, "Filter Type Selection 0: Wideband, 1: Sinc5")
-	adcChModeA.Flags().Uint16("dec-rate", 1024, "Decimation Rate Selection accepted values: 32, 64, 128, 256, 512, 1024")
+	f = adcChModeA.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("f-type", 1, "Filter Type Selection 0: Wideband, 1: Sinc5")
+	f.Uint16("dec-rate", 1024, "Decimation Rate Selection accepted values: 32, 64, 128, 256, 512, 1024")
+	f.SortFlags = false
 
-	adcChModeB.Flags().Bool("write", false, "set the write bit")
-	adcChModeB.Flags().Uint8("f-type", 1, "Filter Type Selection 0: Wideband, 1: Sinc5")
-	adcChModeB.Flags().Uint16("dec-rate", 1024, "Decimation Rate Selection accepted values: 32, 64, 128, 256, 512, 1024")
+	f = adcChModeB.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("f-type", 1, "Filter Type Selection 0: Wideband, 1: Sinc5")
+	f.Uint16("dec-rate", 1024, "Decimation Rate Selection accepted values: 32, 64, 128, 256, 512, 1024")
+	f.SortFlags = false
 
-	//------------------------
+	// ------------------------
 
-	adcChModeSelect.Flags().Bool("write", false, "set the write bit")
-	adcChModeSelect.Flags().UintSlice("ch", []uint{0, 0, 0, 0}, "set channel mode for channels 0..3 0:Mode A, 1:Mode B")
+	f = adcChModeSelect.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.UintSlice("ch", []uint{0, 0, 0, 0}, "set channel mode for channels 0..3 0:Mode A, 1:Mode B")
+	f.SortFlags = false
 
-	//------------------------
+	// ------------------------
 
-	adcPowerMode.Flags().Bool("write", false, "set the write bit")
-	adcPowerMode.Flags().Uint8("sleep", 0, "0: Normal operation, 1: Sleep mode")
-	adcPowerMode.Flags().Uint8("power", 0, "0: Low power, 2: Median, 3: Fast")
-	adcPowerMode.Flags().Uint8("lvds-clk", 0, "0: disable LVDS clock, 1: enable LVDS clock")
-	adcPowerMode.Flags().Uint8("mclk-div", 0, "0: set to MCLK/32 for low power mode, 2: set to MCLK/8 for median mode, 3: set to MCLK/4 for fast mode")
+	f = adcPowerMode.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("sleep", 0, "0: Normal operation, 1: Sleep mode")
+	f.Uint8("power", 0, "0: Low power, 2: Median, 3: Fast")
+	f.Uint8("lvds-clk", 0, "0: disable LVDS clock, 1: enable LVDS clock")
+	f.Uint8("mclk-div", 0, "0: set to MCLK/32 for low power mode, 2: set to MCLK/8 for median mode, 3: set to MCLK/4 for fast mode")
+	f.SortFlags = false
 
-	//------------------------
+	// ------------------------
 
-	adcGeneralConfiguration.Flags().Bool("write", false, "set the write bit")
-	adcGeneralConfiguration.Flags().Uint8("retime-en", 0, "SYNC_OUT signal retime enable bit. 0: disabled, 1: enabled")
-	adcGeneralConfiguration.Flags().Uint8("vcm-pd", 0, "VCM buffer power-down. 0: enabled, 1: disabled")
-	adcGeneralConfiguration.Flags().Uint8("vcm-vsel", 0, "VCM voltage select bits. 0: (AVDD1 − AVSS)/2 V, 1: 1.65 V, 2: 2.5 V, 3: 2.14 V")
+	f = adcGeneralConfiguration.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("retime-en", 0, "SYNC_OUT signal retime enable bit. 0: disabled, 1: enabled")
+	f.Uint8("vcm-pd", 0, "VCM buffer power-down. 0: enabled, 1: disabled")
+	f.Uint8("vcm-vsel", 0, "VCM voltage select bits. 0: (AVDD1 − AVSS)/2 V, 1: 1.65 V, 2: 2.5 V, 3: 2.14 V")
+	f.SortFlags = false
 
-	//------------------------
+	// ------------------------
 
-	adcDataControl.Flags().Bool("write", false, "set the write bit")
-	adcDataControl.Flags().Uint8("spi-sync", 1, "Software synchronization of the AD7768-4. This command has the same effect as sending a signal pulse to the START pin. 0: Change to SPI_SYNC low, 1: Change to SPI_SYNC high")
-	adcDataControl.Flags().Uint8("single-shot", 0, "One-shot mode. Enables one-shot mode. In one-shot mode, the AD7768-4 output a conversion result in response to a SYNC_IN rising edge. 0: Disabled, 1: Enabled")
-	adcDataControl.Flags().Uint8("spi-reset", 0, "Soft reset. Two successive commands must be received in the correct order to generate a reset. 0: No effect, 1: No effect, 2: Second reset command, 3: First reset command")
+	f = adcDataControl.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("spi-sync", 1, "Software synchronization of the AD7768-4. This command has the same effect as sending a signal pulse to the START pin. 0: Change to SPI_SYNC low, 1: Change to SPI_SYNC high")
+	f.Uint8("single-shot", 0, "One-shot mode. Enables one-shot mode. In one-shot mode, the AD7768-4 output a conversion result in response to a SYNC_IN rising edge. 0: Disabled, 1: Enabled")
+	f.Uint8("spi-reset", 0, "Soft reset. Two successive commands must be received in the correct order to generate a reset. 0: No effect, 1: No effect, 2: Second reset command, 3: First reset command")
+	f.SortFlags = false
 
-	//------------------------
+	// ------------------------
 
-	adcInterfaceConfiguration.Flags().Bool("write", false, "set the write bit")
-	adcInterfaceConfiguration.Flags().Uint8("crc-sel", 0, "CRC select. These bits allow the user to implement a CRC on the data interface. 0: No CRC. Status bits with every conversion, 1: Replace the header with CRC message every 4 samples, 2: Replace the header with CRC message every 16 samples, 3: Replace the header with CRC message every 16 samples")
-	adcInterfaceConfiguration.Flags().Uint8("dclk-div", 0, "DCLK divider. These bits control division of the DCLK clock used to clock out conversion data on the DOUTx pins. 0: Divide by 8, 1: Divide by 4, 2: Divide by 2, 3: No division")
+	f = adcInterfaceConfiguration.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("crc-sel", 0, "CRC select. These bits allow the user to implement a CRC on the data interface. 0: No CRC. Status bits with every conversion, 1: Replace the header with CRC message every 4 samples, 2: Replace the header with CRC message every 16 samples, 3: Replace the header with CRC message every 16 samples")
+	f.Uint8("dclk-div", 0, "DCLK divider. These bits control division of the DCLK clock used to clock out conversion data on the DOUTx pins. 0: Divide by 8, 1: Divide by 4, 2: Divide by 2, 3: No division")
+	f.SortFlags = false
+
+	// ------------------------
+
+	f = adcBISTControl.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("ram-bist-start", 0, "RAM BIST. 0: Off, 1: Begin RAM BIST")
+	f.SortFlags = false
+
+	// ------------------------
+
+	// adcDeviceStatus
+
+	// ------------------------
+
+	// adcRevisionID
+
+	// ------------------------
+
+	f = adcGPIOControl.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("ugpio-en", 0, "User GPIO enable. 0: GPIO Disabled, 1: GPIO Enabled")
+	f.Uint8("gpio4", 0, "GPIO4 Direction. 0: Input, 1: Output")
+	f.Uint8("gpio3", 0, "GPIO3 Direction. 0: Input, 1: Output")
+	f.Uint8("gpio2", 0, "GPIO2 Direction. 0: Input, 1: Output")
+	f.Uint8("gpio1", 0, "GPIO1 Direction. 0: Input, 1: Output")
+	f.Uint8("gpio0", 0, "GPIO0 Direction. 0: Input, 1: Output")
+	f.SortFlags = false
+
+	// ------------------------
+
+	f = adcGPIOWriteData.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("gpio4", 0, "GPIO4/FILTER")
+	f.Uint8("gpio3", 0, "GPIO3/MODE3")
+	f.Uint8("gpio2", 0, "GPIO2/MODE2")
+	f.Uint8("gpio1", 0, "GPIO1/MODE1")
+	f.Uint8("gpio0", 0, "GPIO0/MODE0")
+	f.SortFlags = false
+
+	// ------------------------
+
+	// adcGPIOReadData
+
+	// ------------------------
+
+	f = adcPrechargeBuffer1.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("ch1-neg", 1, "0: Off, 1: On (default: 1)")
+	f.Uint8("ch1-pos", 1, "0: Off, 1: On (default: 1)")
+	f.Uint8("ch0-neg", 1, "0: Off, 1: On (default: 1)")
+	f.Uint8("ch0-pos", 1, "0: Off, 1: On (default: 1)")
+	f.SortFlags = false
+
+	// ------------------------
+
+	f = adcPrechargeBuffer2.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("ch3-neg", 1, "0: Off, 1: On (default: 1)")
+	f.Uint8("ch3-pos", 1, "0: Off, 1: On (default: 1)")
+	f.Uint8("ch2-neg", 1, "0: Off, 1: On (default: 1)")
+	f.Uint8("ch2-pos", 1, "0: Off, 1: On (default: 1)")
+	f.SortFlags = false
+
+	// ------------------------
+
+	f = adcPositiveRefPrechargeBuf.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("ch3", 1, "0: Off, 1: On (default: 0)")
+	f.Uint8("ch2", 1, "0: Off, 1: On (default: 0)")
+	f.Uint8("ch1", 1, "0: Off, 1: On (default: 0)")
+	f.Uint8("ch0", 1, "0: Off, 1: On (default: 0)")
+	f.SortFlags = false
+
+	// ------------------------
+
+	f = adcNegativeRefPrechargeBuf.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("ch3", 1, "0: Off, 1: On (default: 0)")
+	f.Uint8("ch2", 1, "0: Off, 1: On (default: 0)")
+	f.Uint8("ch1", 1, "0: Off, 1: On (default: 0)")
+	f.Uint8("ch0", 1, "0: Off, 1: On (default: 0)")
+	f.SortFlags = false
+
+	// ------------------------
 
 }
