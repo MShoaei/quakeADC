@@ -41,7 +41,7 @@ func Execute() {
 	}
 
 	if adcConnection != nil {
-		adcConnection.Close()
+		_ = adcConnection.Close()
 	}
 }
 

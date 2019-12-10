@@ -26,8 +26,8 @@ const (
 	GPIOReadData
 	PrechargeBuffer1
 	PrechargeBuffer2
-	PositiveRefrencePrechargeBuffer1
-	NegativeRefrencePrechargeBuffer1
+	PositiveReferencePrechargeBuffer
+	NegativeReferencePrechargeBuffer
 )
 
 // ADC7768-4 Register Addresses
