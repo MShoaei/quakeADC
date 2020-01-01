@@ -68,7 +68,7 @@ var adcChStandby = &cobra.Command{
 			err   error
 			rx    = make([]byte, 2)
 			h, l  uint8
-			c     []bool
+			c     bool
 			write bool
 			flags = cmd.Flags()
 		)
@@ -79,21 +79,36 @@ var adcChStandby = &cobra.Command{
 		}
 
 		h |= driver.ChannelStandby
-		c, err = flags.GetBoolSlice("ch")
+
+		c, err = flags.GetBool("ch3")
 		if err != nil {
 			return err
 		}
-
-		if c[3] {
+		if c {
 			l |= 0x08
 		}
-		if c[2] {
+
+		c, err = flags.GetBool("ch2")
+		if err != nil {
+			return err
+		}
+		if c {
 			l |= 0x04
 		}
-		if c[1] {
+
+		c, err = flags.GetBool("ch1")
+		if err != nil {
+			return err
+		}
+		if c {
 			l |= 0x02
 		}
-		if c[0] {
+
+		c, err = flags.GetBool("ch0")
+		if err != nil {
+			return err
+		}
+		if c {
 			l |= 0x01
 		}
 
@@ -2242,7 +2257,10 @@ func init() {
 	f.Bool("write", false, "set the write bit")
 	// true==standby
 	// false==enabled
-	f.BoolSlice("ch", []bool{true, true, true, true}, "channels 0..3 standy mode. true/t: Standby, false/f: Enabled")
+	f.Bool("ch3", true, "channels 0 standby mode. true/t: Standby, false/f: Enabled")
+	f.Bool("ch2", true, "channels 0 standby mode. true/t: Standby, false/f: Enabled")
+	f.Bool("ch1", true, "channels 0 standby mode. true/t: Standby, false/f: Enabled")
+	f.Bool("ch0", true, "channels 0 standby mode. true/t: Standby, false/f: Enabled")
 	f.SortFlags = false
 
 	// ------------------------
