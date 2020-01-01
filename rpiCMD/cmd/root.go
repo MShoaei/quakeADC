@@ -5,7 +5,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/MShoaei/rpiGo/driver"
+	"github.com/MShoaei/rpiADC/driver"
 
 	"github.com/spf13/cobra"
 

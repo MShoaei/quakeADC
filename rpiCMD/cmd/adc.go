@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/MShoaei/rpiGo/driver"
+	"github.com/MShoaei/rpiADC/driver"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"gobot.io/x/gobot/drivers/gpio"
@@ -15,7 +15,7 @@ import (
 // adcCmd represents the adc command
 var adcCmd = &cobra.Command{
 	Use:   "adc",
-	Short: "A brief description of your command",
+	Short: "command to control the ADC over SPI",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 
@@ -97,8 +97,6 @@ var adcChStandby = &cobra.Command{
 			l |= 0x01
 		}
 
-		//TODO: rx == tx after 2 consecutive transmits!!! Why?
-		// fmt.Println(rx)
 		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
@@ -2469,7 +2467,5 @@ func init() {
 	f.SortFlags = false
 
 	// ------------------------
-
-
 
 }
