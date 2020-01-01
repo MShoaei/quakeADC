@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"fmt"
-
 	"github.com/google/gopacket/pcap"
 	"github.com/spf13/cobra"
 	rpi "github.com/stianeikeland/go-rpio/v4"
+	"log"
+	"os"
 )
 
 // Not sure if this works!!
@@ -66,21 +67,29 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		names, err := pcap.FindAllDevs()
+		dev := os.Getenv("RPI_INTERFACE")
+		if dev == "" {
+			return fmt.Errorf("RPI_INTERFACE not set")
+		}
+		handle, err := pcap.OpenLive(dev, 256, false, pcap.BlockForever)
 		if err != nil {
 			return err
 		}
 
-		for _, name := range names {
-			fmt.Println(name)
+		for {
+			data, _, err := handle.ReadPacketData()
+			if err != nil {
+				return err
+			}
+			log.Println(data)
 		}
-		return nil
+
 	},
 }
 
 func init() {
-	adcCmd.AddCommand(adcReadCmd)
-	adcCmd.AddCommand(adcReadDevCmd)
+	rootCmd.AddCommand(adcReadCmd)
+	rootCmd.AddCommand(adcReadDevCmd)
 
 	// Here you will define your flags and configuration settings.
 
