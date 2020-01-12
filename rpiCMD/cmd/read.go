@@ -2,102 +2,56 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/google/gopacket/pcap"
-	"github.com/spf13/cobra"
-	rpi "github.com/stianeikeland/go-rpio/v4"
 	"log"
 	"os"
+	"time"
+
+	"github.com/google/gopacket/pcap"
+	"github.com/spf13/cobra"
 )
-
-// Not sure if this works!!
-var adcReadDevCmd = &cobra.Command{
-	Use:   "readDev",
-	Short: "Read /dev/gpio",
-
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var err error
-		clk := make(chan struct{})
-		err = rpi.Open()
-		if err != nil {
-			return err
-		}
-
-		go func(ch chan<- struct{}) {
-			rpi.DetectEdge(23, rpi.FallEdge)
-			for rpi.EdgeDetected(23) {
-				ch <- struct{}{}
-			}
-		}(clk)
-
-		func(ch <-chan struct{}) {
-			var data uint32
-			rpi.DetectEdge(24, rpi.FallEdge)
-			for {
-				fmt.Printf("%0b\n", data)
-				data = 0
-				select {
-				case <-ch:
-					if rpi.EdgeDetected(24) {
-						for i := 0; i < 32; i++ {
-							<-ch
-							if rpi.ReadPin(22) == 1 {
-								data = data << 1
-								data |= 1
-							} else {
-								data = data << 1
-							}
-						}
-					}
-
-				}
-			}
-		}(clk)
-		return nil
-	},
-}
 
 // readCmd represents the read command
 var adcReadCmd = &cobra.Command{
-	Use:   "read",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Use:   "readAll",
+	Short: "Start Reading from RPI_INTERFACE",
+	// Long:  "Start Reading from RPI_INTERFACE",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		dataFile, err := os.OpenFile("access.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		dev := os.Getenv("RPI_INTERFACE")
 		if dev == "" {
 			return fmt.Errorf("RPI_INTERFACE not set")
 		}
-		handle, err := pcap.OpenLive(dev, 256, false, pcap.BlockForever)
+
+		handle, err := pcap.OpenLive(dev, 256, true, pcap.BlockForever)
 		if err != nil {
 			return err
 		}
 
 		for {
-			data, _, err := handle.ReadPacketData()
+			packet, _, err := handle.ReadPacketData()
 			if err != nil {
 				return err
 			}
-			log.Println(data)
-		}
+			// packet = append(packet, '\n')
+			// dataFile.Write(packet)
 
+			adcNum := 1 // TODO: should change!
+
+			ch0Header, ch0Data := packet[15], packet[16:19]
+			ch1Header, ch1Data := packet[19], packet[20:23]
+			ch2Header, ch2Data := packet[23], packet[24:27]
+			ch3Header, ch3Data := packet[27], packet[28:31]
+
+			fmt.Fprintf(dataFile, "%s %d %d %d %d %d %d %d %d %d\n", time.Now().Format(time.StampMilli), adcNum, ch0Header, ch0Data, ch1Header, ch1Data, ch2Header, ch2Data, ch3Header, ch3Data)
+		}
+		// return nil
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(adcReadCmd)
-	rootCmd.AddCommand(adcReadDevCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// readCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// readCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
