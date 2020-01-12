@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/MShoaei/rpiADC/driver"
+	"github.com/MShoaei/quakeADC/driver"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"gobot.io/x/gobot/drivers/gpio"

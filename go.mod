@@ -1,4 +1,4 @@
-module github.com/MShoaei/rpiADC
+module github.com/MShoaei/quakeADC
 
 go 1.13
 
