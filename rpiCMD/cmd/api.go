@@ -10,7 +10,7 @@ import (
 // NewAPI creates a new API which recieves commands and executes them
 // the server should be started with:
 // $ rpiCMD server
-// the server will listen on port "9091" and accepts POST request to "/command".
+// the server will listen on port "9090" and accepts POST request to "/command".
 // POST request should be a JSON object. e.g.:
 //{
 //	"Command": "chStandby",
