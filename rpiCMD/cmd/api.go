@@ -34,7 +34,11 @@ var dataFile *os.File
 //}
 func NewAPI() *iris.Application {
 	api := iris.Default()
-	api.RegisterView(iris.HTML("./templates", ".html"))
+	var templates string
+	if templates = os.Getenv("TEMPLATES_DIR"); templates == "" {
+		templates = "./templates"
+	}
+	api.RegisterView(iris.HTML(templates, ".html"))
 
 	api.Get("/", homeHandler)
 	api.Post("/command", commandHandler)
