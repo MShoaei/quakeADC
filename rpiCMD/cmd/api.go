@@ -3,9 +3,22 @@ package cmd
 import (
 	"log"
 	"strings"
+	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/kataras/iris/v12"
 )
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
+
+var readParams struct {
+	File     string `json:"file"`
+	Skip     int    `json:"skip"`
+	Duration int    `json:"duration"`
+}
 
 // NewAPI creates a new API which recieves commands and executes them
 // the server should be started with:
@@ -18,8 +31,13 @@ import (
 //}
 func NewAPI() *iris.Application {
 	api := iris.Default()
+	api.RegisterView(iris.HTML("./templates", ".html"))
 
+	api.Get("/", homeHandler)
 	api.Post("/command", commandHandler)
+	api.Get("/readlive", readLiveHandler)
+	api.Post("/readlive", readLivePostHandler)
+	// api.Any("/readlive", readLiveHandler)
 
 	return api
 }
@@ -49,8 +67,43 @@ func commandHandler(ctx iris.Context) {
 		return
 	}
 
+	ctx.StatusCode(iris.StatusOK)
 	ctx.JSON(map[string]string{
 		"message": "success",
 	})
-	ctx.StatusCode(iris.StatusOK)
+}
+
+func readLiveHandler(ctx iris.Context) {
+	log.Println("readLiveHandler called")
+	conn, err := upgrader.Upgrade(ctx.ResponseWriter(), ctx.Request(), nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	rcvToSend := make(chan string)
+	go read(readOptions{
+		file:     readParams.File,
+		skip:     readParams.Skip,
+		duration: readParams.Duration,
+		ch:       rcvToSend,
+	})
+	time.Sleep(1 * time.Second)
+	for {
+		data, ok := <-rcvToSend
+		if !ok {
+			conn.CloseHandler()
+			return
+		}
+		conn.WriteMessage(websocket.TextMessage, []byte(data))
+		// time.Sleep(1 * time.Second)
+	}
+}
+
+func readLivePostHandler(ctx iris.Context) {
+	log.Println("readLivePostHandler called")
+	ctx.ReadJSON(&readParams)
+	ctx.JSON(iris.Map{"code": 200})
+}
+
+func homeHandler(ctx iris.Context) {
+	ctx.View("ws.html")
 }
