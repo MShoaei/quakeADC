@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -12,7 +11,7 @@ import (
 )
 
 type readOptions struct {
-	file     string
+	file     *os.File
 	ch       chan string
 	skip     int
 	duration int
@@ -24,15 +23,16 @@ var adcReadCmd = &cobra.Command{
 	Short: "Start Reading from RPI_INTERFACE",
 	// Long:  "Start Reading from RPI_INTERFACE",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return read(readOptions{file: "access.log", ch: nil, skip: 0})
+		f, err := os.OpenFile("access.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return err
+		}
+		return read(readOptions{file: f, ch: nil, skip: 0})
 	},
 }
 
 func read(opt readOptions) error {
-	dataFile, err := os.OpenFile(opt.file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// dataFile := opt.file
 
 	dev := os.Getenv("RPI_INTERFACE")
 	if dev == "" {
@@ -75,6 +75,7 @@ func read(opt readOptions) error {
 			packet, ok = <-ch
 			if !ok {
 				close(opt.ch)
+				dataFile.Close()
 				return nil
 			}
 			adcNum := 1 // TODO: should change!
@@ -110,6 +111,8 @@ func read(opt readOptions) error {
 
 			// _, ch0Data := packet[42], packet[43:46]
 			// ch0Header, ch0Data := packet[15], packet[16:19]
+
+			// ch0Value := (packet[43] << 16) | (packet[44] << 8) | (packet[45])
 			ch0Value := (int32(packet[43]) << 16) + (int32(packet[44]) << 8) + (int32(packet[45]))
 
 			// _, ch1Data := packet[46], packet[47:50]

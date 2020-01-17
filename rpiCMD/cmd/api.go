@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -19,6 +20,8 @@ var readParams struct {
 	Skip     int    `json:"skip"`
 	Duration int    `json:"duration"`
 }
+
+var dataFile *os.File
 
 // NewAPI creates a new API which recieves commands and executes them
 // the server should be started with:
@@ -38,6 +41,7 @@ func NewAPI() *iris.Application {
 	api.Get("/readlive", readLiveHandler)
 	api.Post("/readlive", readLivePostHandler)
 	// api.Any("/readlive", readLiveHandler)
+	api.Get("/getfile", getFileHandler)
 
 	return api
 }
@@ -79,9 +83,14 @@ func readLiveHandler(ctx iris.Context) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	dataFile, err = os.OpenFile(readParams.File+".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 	rcvToSend := make(chan string)
 	go read(readOptions{
-		file:     readParams.File,
+		file:     dataFile,
 		skip:     readParams.Skip,
 		duration: readParams.Duration,
 		ch:       rcvToSend,
@@ -90,7 +99,10 @@ func readLiveHandler(ctx iris.Context) {
 	for {
 		data, ok := <-rcvToSend
 		if !ok {
-			conn.CloseHandler()
+			conn.WriteMessage(websocket.TextMessage, []byte("Send finished"))
+			conn.Close()
+			// ctx.Redirect("/getfile")
+			// ctx.ResetResponseWriter(ctx.ResponseWriter())
 			return
 		}
 		conn.WriteMessage(websocket.TextMessage, []byte(data))
@@ -102,6 +114,14 @@ func readLivePostHandler(ctx iris.Context) {
 	log.Println("readLivePostHandler called")
 	ctx.ReadJSON(&readParams)
 	ctx.JSON(iris.Map{"code": 200})
+}
+
+func getFileHandler(ctx iris.Context) {
+	err := ctx.SendFile(dataFile.Name(), dataFile.Name())
+	if err != nil {
+		log.Fatal(err)
+	}
+	return
 }
 
 func homeHandler(ctx iris.Context) {
