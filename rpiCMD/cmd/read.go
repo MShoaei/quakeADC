@@ -44,23 +44,34 @@ func read(opt readOptions) error {
 		return err
 	}
 	ch := make(chan []byte, 100000)
-	go func(send chan<- []byte, d time.Duration) error {
-		t := time.NewTimer(d * time.Second)
-		for {
-			select {
-			case <-t.C:
-				close(send)
-				t.Stop()
-				return nil
-			default:
+	go func(ch chan<- []byte, d time.Duration) error {
+		if opt.duration == 0 {
+			t := time.NewTimer(d * time.Second)
+			for {
+				select {
+				case <-t.C:
+					close(ch)
+					t.Stop()
+					return nil
+				default:
+					var timeBuffer []byte
+					packet, info, err := handle.ReadPacketData()
+					if err != nil {
+						return err
+					}
+					packet = append(info.Timestamp.AppendFormat(timeBuffer, "06-01-02,15:04:05.000000000"), packet...)
+					ch <- packet
+				}
+			}
+		} else {
+			for {
 				var timeBuffer []byte
 				packet, info, err := handle.ReadPacketData()
 				if err != nil {
 					return err
 				}
-				time.Now()
 				packet = append(info.Timestamp.AppendFormat(timeBuffer, "06-01-02,15:04:05.000000000"), packet...)
-				send <- packet
+				ch <- packet
 			}
 		}
 	}(ch, time.Duration(opt.duration))
