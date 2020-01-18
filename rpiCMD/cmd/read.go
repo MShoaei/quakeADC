@@ -45,7 +45,7 @@ func read(opt readOptions) error {
 	}
 	ch := make(chan []byte, 100000)
 	go func(ch chan<- []byte, d time.Duration) error {
-		if opt.duration == 0 {
+		if opt.duration != 0 {
 			t := time.NewTimer(d * time.Second)
 			for {
 				select {
