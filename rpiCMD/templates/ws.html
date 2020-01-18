@@ -2,6 +2,17 @@
 <html lang="en">
   <head>
     <meta http-equiv="Content-Type" content="text/html;charset=UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+      integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+      crossorigin="anonymous"
+    />
+
     <title>Chat Example</title>
     <script type="text/javascript">
       window.onload = function() {
@@ -73,12 +84,12 @@
       };
     </script>
     <style type="text/css">
-      html {
+      /* html {
         overflow: hidden;
-      }
+      } */
 
       body {
-        overflow: hidden;
+        /* overflow: hidden; */
         padding: 0;
         margin: 0;
         width: 100%;
@@ -89,33 +100,53 @@
       #log {
         background: white;
         margin: 0;
-        padding: 0.5em 0.5em 0.5em 0.5em;
-        position: absolute;
+        /* padding: 0.5em 0.5em 0.5em 0.5em; */
+        /* position: absolute;
         top: 0.5em;
         left: 0.5em;
         right: 0.5em;
-        bottom: 3em;
+        bottom: 5em; */
+        height: 85vh;
         overflow: auto;
       }
 
       #form {
         padding: 0 0.5em 0 0.5em;
         margin: 0;
-        position: absolute;
-        bottom: 1em;
+        /* position: absolute;
+        bottom: 0.5em;
         left: 0px;
-        width: 100%;
+        width: 100%; */
         overflow: hidden;
       }
     </style>
   </head>
   <body>
     <div id="log"></div>
-    <form id="form">
-      <input type="text" id="file" placeholder="file name" />
-      <input type="text" id="skip" placeholder="update every (?) ms" />
-      <input type="text" id="duration" placeholder="data read duration (s)" />
-      <input type="submit" value="Start" />
+    <form id="form" class="form-inline">
+      <input
+        class="form-control mb-2 mb-sm-0 mr-sm-2 mt-5 mt-sm-0"
+        type="text"
+        id="file"
+        placeholder="file name"
+      />
+      <input
+        class="form-control mb-2 mb-sm-0 mr-sm-2"
+        type="text"
+        id="skip"
+        placeholder="update every (?) ms"
+      />
+      <input
+        class="form-control mb-2 mb-sm-0 mr-sm-2"
+        type="text"
+        id="duration"
+        placeholder="data read duration (s)"
+      />
+      <input
+        class="btn btn-primary mb-2 mb-sm-0 mt-0 mt-sm-2 btn-block"
+        type="submit"
+        value="Start"
+      />
     </form>
   </body>
 </html>

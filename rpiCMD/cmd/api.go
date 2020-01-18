@@ -38,7 +38,7 @@ func NewAPI() *iris.Application {
 	if templates = os.Getenv("TEMPLATES_DIR"); templates == "" {
 		templates = "./templates"
 	}
-	api.RegisterView(iris.HTML(templates, ".html"))
+	api.RegisterView(iris.HTML(templates, ".html").Reload(true))
 
 	api.Get("/", homeHandler)
 	api.Post("/command", commandHandler)
