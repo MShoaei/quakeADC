@@ -123,7 +123,7 @@ func readLivePostHandler(ctx iris.Context) {
 func getFileHandler(ctx iris.Context) {
 	err := ctx.SendFile(dataFile.Name(), dataFile.Name())
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	return
 }
