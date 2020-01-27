@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
 	"strings"
@@ -43,7 +44,8 @@ func read(opt readOptions) error {
 	if err != nil {
 		return err
 	}
-	ch := make(chan []byte, 100000)
+	ch := make(chan []byte, 1000000)
+	epoch := time.Now()
 	go func(ch chan<- []byte, d time.Duration) error {
 		if opt.duration != 0 {
 			t := time.NewTimer(d * time.Second)
@@ -54,23 +56,29 @@ func read(opt readOptions) error {
 					t.Stop()
 					return nil
 				default:
-					var timeBuffer []byte
 					packet, info, err := handle.ReadPacketData()
 					if err != nil {
 						return err
 					}
-					packet = append(info.Timestamp.AppendFormat(timeBuffer, "06-01-02,15:04:05.000000000"), packet...)
+
+					// 8 byte time in milliseconds
+					buf := make([]byte, 8)
+					binary.LittleEndian.PutUint64(buf, uint64(info.Timestamp.Sub(epoch).Milliseconds()))
+					packet = append(buf, packet...)
 					ch <- packet
 				}
 			}
 		} else {
 			for {
-				var timeBuffer []byte
 				packet, info, err := handle.ReadPacketData()
 				if err != nil {
 					return err
 				}
-				packet = append(info.Timestamp.AppendFormat(timeBuffer, "06-01-02,15:04:05.000000000"), packet...)
+
+				//8 byte time in milliseconds
+				buf := make([]byte, 8)
+				binary.LittleEndian.PutUint64(buf, uint64(info.Timestamp.Sub(epoch).Milliseconds()))
+				packet = append(buf, packet...)
 				ch <- packet
 			}
 		}
@@ -81,8 +89,13 @@ func read(opt readOptions) error {
 		b := strings.Builder{}
 		b.Grow(100)
 		for {
+			var signCH0 int32 = 0
+			var signCH1 int32 = 0
+			var signCH2 int32 = 0
+			var signCH3 int32 = 0
 			var packet []byte
 			var ok bool
+
 			packet, ok = <-ch
 			if !ok {
 				close(opt.ch)
@@ -91,17 +104,28 @@ func read(opt readOptions) error {
 			}
 			adcNum := 1 // TODO: should change!
 
-			t := packet[:27]
+			t := packet[:8]
+			if int8(packet[19]) < 0 {
+				signCH0 = -1 << 24
+			}
+			ch0Value := signCH0 + (int32(packet[24]) << 16) + (int32(packet[25]) << 8) + (int32(packet[26]))
 
-			ch0Value := (int32(packet[43]) << 16) + (int32(packet[44]) << 8) + (int32(packet[45]))
+			if int8(packet[28]) < 0 {
+				signCH1 = -1 << 24
+			}
+			ch1Value := signCH1 + (int32(packet[28]) << 16) + (int32(packet[29]) << 8) + int32((packet[30]))
 
-			ch1Value := (int32(packet[47]) << 16) + (int32(packet[48]) << 8) + int32((packet[49]))
+			if int8(packet[32]) < 0 {
+				signCH2 = -1 << 24
+			}
+			ch2Value := signCH2 + (int32(packet[32]) << 16) + (int32(packet[33]) << 8) + (int32(packet[34]))
 
-			ch2Value := (int32(packet[51]) << 16) + (int32(packet[52]) << 8) + (int32(packet[53]))
+			if int8(packet[36]) < 0 {
+				signCH3 = -1 << 24
+			}
+			ch3Value := signCH3 + (int32(packet[36]) << 16) + (int32(packet[37]) << 8) + (int32(packet[38]))
 
-			ch3Value := (int32(packet[55]) << 16) + (int32(packet[56]) << 8) + (int32(packet[57]))
-
-			b.WriteString(fmt.Sprintf("%s %d %d %d %d %d\n", t, adcNum, ch0Value, ch1Value, ch2Value, ch3Value))
+			b.WriteString(fmt.Sprintf("%d,%d,%d,%d,%d,%d\n", t, adcNum, ch0Value, ch1Value, ch2Value, ch3Value))
 			fmt.Fprintf(dataFile, b.String())
 			select {
 			case <-skip.C:
@@ -114,6 +138,7 @@ func read(opt readOptions) error {
 		}
 	} else {
 		for {
+			//TODO: INCORRECT! pls fix.
 			packet := <-ch
 
 			adcNum := 1 // TODO: should change!
