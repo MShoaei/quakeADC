@@ -46,7 +46,7 @@ func read(opt readOptions) error {
 	}
 	ch := make(chan []byte, 1000000)
 	epoch := time.Now()
-	go func(ch chan<- []byte, d time.Duration) error {
+	go func(ch chan<- []byte, d time.Duration) {
 		if opt.duration != 0 {
 			t := time.NewTimer(d * time.Second)
 			for {
@@ -54,11 +54,11 @@ func read(opt readOptions) error {
 				case <-t.C:
 					close(ch)
 					t.Stop()
-					return nil
+					return
 				default:
 					packet, info, err := handle.ReadPacketData()
 					if err != nil {
-						return err
+						return
 					}
 
 					// 8 byte time in milliseconds
@@ -72,7 +72,7 @@ func read(opt readOptions) error {
 			for {
 				packet, info, err := handle.ReadPacketData()
 				if err != nil {
-					return err
+					return
 				}
 
 				//8 byte time in milliseconds
@@ -138,29 +138,40 @@ func read(opt readOptions) error {
 		}
 	} else {
 		for {
-			//TODO: INCORRECT! pls fix.
+			var signCH0 int32 = 0
+			var signCH1 int32 = 0
+			var signCH2 int32 = 0
+			var signCH3 int32 = 0
+
 			packet := <-ch
 
 			adcNum := 1 // TODO: should change!
 
-			t := packet[:27]
+			t := packet[:8]
+			if int8(packet[19]) < 0 {
+				signCH0 = -1 << 24
+			}
+			ch0Value := signCH0 + (int32(packet[24]) << 16) + (int32(packet[25]) << 8) + (int32(packet[26]))
 
-			// _, ch0Data := packet[42], packet[43:46]
-			// ch0Header, ch0Data := packet[15], packet[16:19]
+			if int8(packet[28]) < 0 {
+				signCH1 = -1 << 24
+			}
+			ch1Value := signCH1 + (int32(packet[28]) << 16) + (int32(packet[29]) << 8) + int32((packet[30]))
 
-			// ch0Value := (packet[43] << 16) | (packet[44] << 8) | (packet[45])
-			ch0Value := (int32(packet[43]) << 16) + (int32(packet[44]) << 8) + (int32(packet[45]))
+			if int8(packet[32]) < 0 {
+				signCH2 = -1 << 24
+			}
+			ch2Value := signCH2 + (int32(packet[32]) << 16) + (int32(packet[33]) << 8) + (int32(packet[34]))
 
-			// _, ch1Data := packet[46], packet[47:50]
-			ch1Value := (int32(packet[47]) << 16) + (int32(packet[48]) << 8) + int32((packet[49]))
+			if int8(packet[36]) < 0 {
+				signCH3 = -1 << 24
+			}
+			ch3Value := signCH3 + (int32(packet[36]) << 16) + (int32(packet[37]) << 8) + (int32(packet[38]))
 
-			// _, ch2Data := packet[50], packet[51:54]
-			ch2Value := (int32(packet[51]) << 16) + (int32(packet[52]) << 8) + (int32(packet[53]))
+			data := fmt.Sprintf("%d,%d,%d,%d,%d,%d\n", t, adcNum, ch0Value, ch1Value, ch2Value, ch3Value)
+			fmt.Fprintf(dataFile, data)
 
-			// _, ch3Data := packet[54], packet[55:58]
-			ch3Value := (int32(packet[55]) << 16) + (int32(packet[56]) << 8) + (int32(packet[57]))
-
-			fmt.Fprintf(dataFile, "%s %d %d %d %d %d\n", t, adcNum, ch0Value, ch1Value, ch2Value, ch3Value)
+			fmt.Println(data)
 		}
 	}
 }
