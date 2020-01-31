@@ -32,52 +32,52 @@ const (
 
 // ADC7768-4 Register Addresses
 const (
-	CH0OffsetMSB uint8 = 0x1E + iota
-	CH0OffsetMid
-	CH0OffsetLSB
-	CH1OffsetMSB
-	CH1OffsetMid
-	CH1OffsetLSB
+	Ch0OffsetMSB uint8 = 0x1E + iota
+	Ch0OffsetMid
+	Ch0OffsetLSB
+	Ch1OffsetMSB
+	Ch1OffsetMid
+	Ch1OffsetLSB
 )
 
 // ADC7768-4 Register Addresses
 const (
-	CH2OffsetMSB uint8 = 0x2A + iota
-	CH2OffsetMid
-	CH2OffsetLSB
-	CH3OffsetMSB
-	CH3OffsetMid
-	CH3OffsetLSB
+	Ch2OffsetMSB uint8 = 0x2A + iota
+	Ch2OffsetMid
+	Ch2OffsetLSB
+	Ch3OffsetMSB
+	Ch3OffsetMid
+	Ch3OffsetLSB
 )
 
 // ADC7768-4 Register Addresses
 const (
-	CH0GainMSB uint8 = 0x36 + iota
-	CH0GainMid
-	CH0GainLSB
-	CH1GainMSB
-	CH1GainMid
-	CH1GainLSB
+	Ch0GainMSB uint8 = 0x36 + iota
+	Ch0GainMid
+	Ch0GainLSB
+	Ch1GainMSB
+	Ch1GainMid
+	Ch1GainLSB
 )
 
 // ADC7768-4 Register Addresses
 const (
-	CH2GainMSB uint8 = 0x42 + iota
-	CH2GainMid
-	CH2GainLSB
-	CH3GainMSB
-	CH3GainMid
-	CH3GainLSB
+	Ch2GainMSB uint8 = 0x42 + iota
+	Ch2GainMid
+	Ch2GainLSB
+	Ch3GainMSB
+	Ch3GainMid
+	Ch3GainLSB
 )
 
 // ADC7768-4 Register Addresses
 const (
-	CH0SyncOffset uint8 = 0x4E + iota
-	CH1SyncOffset
+	Ch0SyncOffset uint8 = 0x4E + iota
+	Ch1SyncOffset
 	_
 	_
-	CH2SyncOffset
-	CH3SyncOffset
+	Ch2SyncOffset
+	Ch3SyncOffset
 	_
 	_
 	DiagnosticRX

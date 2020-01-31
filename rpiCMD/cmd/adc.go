@@ -2,14 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"log"
-	"time"
-
 	"github.com/MShoaei/quakeADC/driver"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	"gobot.io/x/gobot/drivers/gpio"
-	"gobot.io/x/gobot/platforms/raspi"
+	flag "github.com/spf13/pflag"
+	"log"
 )
 
 // adcCmd represents the adc command
@@ -28,6 +24,9 @@ to quickly create a Cobra application.`,
 			speed           int64
 			bus, chip, mode int
 		)
+		if adcConnection != nil {
+			return nil
+		}
 		bus, err = cmd.Flags().GetInt("bus")
 		if err != nil {
 			return err
@@ -60,62 +59,23 @@ to quickly create a Cobra application.`,
 }
 
 var adcChStandby = &cobra.Command{
-	Use:   "chStandby",
+	Use:   "ChStandby",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			c     bool
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, _ = flags.GetBool("write")
-		if !write {
-			h = h | 0x80
-		}
-
-		h |= driver.ChannelStandby
-
-		c, err = flags.GetBool("ch3")
+		tx, rx, err = adcConnection.ChStandby(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if c {
-			l |= 0x08
-		}
-
-		c, err = flags.GetBool("ch2")
-		if err != nil {
-			return err
-		}
-		if c {
-			l |= 0x04
-		}
-
-		c, err = flags.GetBool("ch1")
-		if err != nil {
-			return err
-		}
-		if c {
-			l |= 0x02
-		}
-
-		c, err = flags.GetBool("ch0")
-		if err != nil {
-			return err
-		}
-		if c {
-			l |= 0x01
-		}
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 
@@ -123,165 +83,69 @@ var adcChStandby = &cobra.Command{
 }
 
 var adcChModeA = &cobra.Command{
-	Use:   "chModeA",
+	Use:   "ChModeA",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, _ = flags.GetBool("write")
-		if !write {
-			h |= 0x80
-		}
-
-		ft, err := flags.GetUint8("f-type")
+		tx, rx, err = adcConnection.ChModeA(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if ft < 0 || ft > 1 {
-			return fmt.Errorf("invalid filter type. expected 0 or 1, got %d", ft)
-		}
-
-		h |= driver.ChannelModeA
-
-		dr, err := flags.GetUint16("dec-rate")
-		if err != nil {
-			return err
-		}
-
-		switch dr {
-		case 32:
-			l |= 0x0
-		case 64:
-			l |= 0x1
-		case 128:
-			l |= 0x2
-		case 256:
-			l |= 0x3
-		case 512:
-			l |= 0x4
-		case 1024:
-			l |= 0x5
-		default:
-			return fmt.Errorf("invalid decimation rate. got %d", dr)
-		}
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
 var adcChModeB = &cobra.Command{
-	Use:   "chModeB",
+	Use:   "ChModeB",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, _ = flags.GetBool("write")
-		if !write {
-			h |= 0x80
-		}
-
-		ft, err := flags.GetUint8("f-type")
+		tx, rx, err = adcConnection.ChModeB(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if ft < 0 || ft > 1 {
-			return fmt.Errorf("invalid filter type. expected 0 or 1, got %d", ft)
-		}
-
-		h |= driver.ChannelModeB
-
-		dr, err := flags.GetUint16("dec-rate")
-		if err != nil {
-			return err
-		}
-
-		switch dr {
-		case 32:
-			l |= 0x0
-		case 64:
-			l |= 0x1
-		case 128:
-			l |= 0x2
-		case 256:
-			l |= 0x3
-		case 512:
-			l |= 0x4
-		case 1024:
-			l |= 0x5
-		default:
-			return fmt.Errorf("invalid decimation rate. got %d", dr)
-		}
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
 var adcChModeSelect = &cobra.Command{
-	Use:   "chModeSel",
+	Use:   "ChModeSel",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			c     = make([]uint, 4)
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.ChModeSel(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
-		}
-
-		h |= driver.ChannelModeSelect
-
-		c, err = flags.GetUintSlice("ch")
-		if c[3] == 1 {
-			l |= 0x20
-		}
-		if c[2] == 1 {
-			l |= 0x10
-		}
-		if c[1] == 01 {
-			l |= 0x02
-		}
-		if c[0] == 1 {
-			l |= 0x01
-		}
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
@@ -293,80 +157,18 @@ var adcPowerMode = &cobra.Command{
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.PowerMode(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
-		}
-
-		h |= driver.PowerMode
-
-		s, err = flags.GetUint8("sleep")
-		if err != nil {
-			return err
-		}
-		if s == 1 {
-			l |= 0x80
-		}
-
-		s, err = flags.GetUint8("power")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 2:
-			l |= 0x20
-		case 3:
-			l |= 0x30
-		default:
-			return fmt.Errorf("invalid value for power. got %d, expected 0, 2 or 3", s)
-		}
-
-		s, err = flags.GetUint8("lvds-clk")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x08
-		default:
-			return fmt.Errorf("invalid value for LVDS Clock. got %d, expected 0 or 1", s)
-		}
-
-		s, err = flags.GetUint8("mclk-div")
-		if err != nil {
-			return err
-		}
-
-		switch s {
-		case 0:
-			l |= 0x0
-		case 2:
-			l |= 0x02
-		case 3:
-			l |= 0x03
-		default:
-			return fmt.Errorf("invalid value for MCLK division. got %d, expected 0, 2 or 3", s)
-		}
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
@@ -378,151 +180,41 @@ var adcGeneralConfiguration = &cobra.Command{
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.GeneralConf(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
-		}
-
-		h |= driver.GeneralConfiguration
-
-		s, err = flags.GetUint8("retime-en")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x10
-		default:
-			return fmt.Errorf("expected 0 or 1 for retime-en, got %d", s)
-		}
-
-		s, err = flags.GetUint8("vcm-pd")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x08
-		default:
-			return fmt.Errorf("expected 0 or 1 for vcm-pd, got %d", s)
-		}
-
-		// reserved bit(bit 3), should be 1
-		l |= 0x04
-
-		s, err = flags.GetUint8("vcm-vsel")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x01
-		case 2:
-			l |= 0x02
-		case 3:
-			l |= 0x03
-		default:
-			return fmt.Errorf("expected 0..3 for vcm-vsel, got %d", s)
-		}
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
-// TODO: Reset needs 2 successive commands which should be implemented.
 var adcDataControl = &cobra.Command{
 	Use:   "DataControl",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.DataControl(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
-		}
-
-		h |= driver.DataControl
-
-		s, err = flags.GetUint8("spi-sync")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x80
-		default:
-			return fmt.Errorf("expected 0 or 1 for spi-sync, got %d", s)
-		}
-
-		s, err = flags.GetUint8("single-shot")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x10
-		default:
-			return fmt.Errorf("expected 0 or 1 for single-shot, got %d", s)
-		}
-
-		s, err = flags.GetUint8("spi-reset")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x01
-		case 2:
-			l |= 0x02
-		case 3:
-			l |= 0x03
-		default:
-			return fmt.Errorf("expected 0 or 1 for spi-sync, got %d", s)
-		}
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
@@ -534,62 +226,18 @@ var adcInterfaceConfiguration = &cobra.Command{
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.InterfaceConf(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
-		}
-
-		h |= driver.InterfaceConfiguration
-
-		s, err = flags.GetUint8("crc-sel")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x10
-		case 2:
-			l |= 0x20
-		case 3:
-			l |= 0x30
-		default:
-			return fmt.Errorf("expected 0..3 for crc-sel, got %d", s)
-		}
-
-		s, err = flags.GetUint8("dclk-div")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x01
-		case 2:
-			l |= 0x02
-		case 3:
-			l |= 0x03
-		default:
-			return fmt.Errorf("expected 0..3 for dclk-div, got %d", s)
-		}
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
@@ -601,41 +249,18 @@ var adcBISTControl = &cobra.Command{
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.BISTControl(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
-		}
-
-		h |= driver.BISTControl
-
-		s, err = flags.GetUint8("ram-bist-start")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x01
-		default:
-			return fmt.Errorf("expected 0 or 1 for ram-bist-start, got %d", s)
-		}
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
@@ -647,18 +272,19 @@ var adcDeviceStatus = &cobra.Command{
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err  error
-			rx   = make([]byte, 2)
-			h, l uint8
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		h |= 0x80
-		h |= driver.DeviceStatus
+		tx, rx, err = adcConnection.DeviceStatus(cmd.Flags())
+		if err != nil {
+			return err
+		}
 
-		err = adcConnection.Transmit([]byte{h, l}, rx)
-
-		log.Println([]byte{h, l}, rx)
-
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+			log.Println(tx, rx)
+		}
 		return err
 
 	},
@@ -670,18 +296,19 @@ var adcRevisionID = &cobra.Command{
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err  error
-			rx   = make([]byte, 2)
-			h, l uint8
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		h |= 0x80
-		h |= driver.RevisionID
+		tx, rx, err = adcConnection.RevisionID(cmd.Flags())
+		if err != nil {
+			return err
+		}
 
-		err = adcConnection.Transmit([]byte{h, l}, rx)
-
-		log.Println([]byte{h, l}, rx)
-
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+			log.Println(tx, rx)
+		}
 		return err
 
 	},
@@ -693,106 +320,18 @@ var adcGPIOControl = &cobra.Command{
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.GPIOControl(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
-		}
-
-		h |= driver.GPIOControl
-
-		s, err = flags.GetUint8("ugpio-en")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x80
-		default:
-			return fmt.Errorf("expected 0 or 1 for ugpio-en, got %d", s)
-		}
-
-		s, err = flags.GetUint8("gpio4")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x10
-		default:
-			return fmt.Errorf("expected 0 or 1 for gpio4, got %d", s)
-		}
-
-		s, err = flags.GetUint8("gpio3")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x08
-		default:
-			return fmt.Errorf("expected 0 or 1 for gpio3, got %d", s)
-		}
-
-		s, err = flags.GetUint8("gpio2")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x04
-		default:
-			return fmt.Errorf("expected 0 or 1 for gpio2, got %d", s)
-		}
-
-		s, err = flags.GetUint8("gpio1")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x02
-		default:
-			return fmt.Errorf("expected 0 or 1 for gpio1, got %d", s)
-		}
-
-		s, err = flags.GetUint8("gpio0")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x01
-		default:
-			return fmt.Errorf("expected 0 or 1 for gpio0, got %d", s)
-		}
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
@@ -805,93 +344,18 @@ var adcGPIOWriteData = &cobra.Command{
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.GPIOWriteData(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
-		}
-
-		h |= driver.GPIOWriteData
-
-		s, err = flags.GetUint8("gpio4")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x10
-		default:
-			return fmt.Errorf("expected 0 or 1 for gpio4, got %d", s)
-		}
-
-		s, err = flags.GetUint8("gpio3")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x08
-		default:
-			return fmt.Errorf("expected 0 or 1 for gpio3, got %d", s)
-		}
-
-		s, err = flags.GetUint8("gpio2")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x04
-		default:
-			return fmt.Errorf("expected 0 or 1 for gpio2, got %d", s)
-		}
-
-		s, err = flags.GetUint8("gpio1")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x02
-		default:
-			return fmt.Errorf("expected 0 or 1 for gpio1, got %d", s)
-		}
-
-		s, err = flags.GetUint8("gpio0")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x01
-		default:
-			return fmt.Errorf("expected 0 or 1 for gpio0, got %d", s)
-		}
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
@@ -903,18 +367,19 @@ var adcGPIOReadData = &cobra.Command{
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err  error
-			rx   = make([]byte, 2)
-			h, l uint8
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		h |= 0x80
-		h |= driver.GPIOReadData
+		tx, rx, err = adcConnection.GPIOReadData(cmd.Flags())
+		if err != nil {
+			return err
+		}
 
-		err = adcConnection.Transmit([]byte{h, l}, rx)
-
-		log.Println([]byte{h, l}, rx)
-
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+			log.Println(tx, rx)
+		}
 		return err
 	},
 }
@@ -925,80 +390,18 @@ var adcPrechargeBuffer1 = &cobra.Command{
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.PrechargeBuffer1(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
-		}
-
-		h |= driver.PrechargeBuffer1
-
-		s, err = flags.GetUint8("ch1-neg")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x08
-		default:
-			return fmt.Errorf("expected 0 or 1 for ch1-neg, got %d", s)
-		}
-
-		s, err = flags.GetUint8("ch1-pos")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x04
-		default:
-			return fmt.Errorf("expected 0 or 1 for ch1-pos, got %d", s)
-		}
-
-		s, err = flags.GetUint8("ch0-neg")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x02
-		default:
-			return fmt.Errorf("expected 0 or 1 for ch0-neg, got %d", s)
-		}
-
-		s, err = flags.GetUint8("ch0-pos")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x01
-		default:
-			return fmt.Errorf("expected 0 or 1 for ch0-pos, got %d", s)
-		}
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
@@ -1010,80 +413,18 @@ var adcPrechargeBuffer2 = &cobra.Command{
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.PrechargeBuffer2(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
-		}
-
-		h |= driver.PrechargeBuffer2
-
-		s, err = flags.GetUint8("ch3-neg")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x08
-		default:
-			return fmt.Errorf("expected 0 or 1 for ch3-neg, got %d", s)
-		}
-
-		s, err = flags.GetUint8("ch3-pos")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x04
-		default:
-			return fmt.Errorf("expected 0 or 1 for ch3-pos, got %d", s)
-		}
-
-		s, err = flags.GetUint8("ch2-neg")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x02
-		default:
-			return fmt.Errorf("expected 0 or 1 for ch2-neg, got %d", s)
-		}
-
-		s, err = flags.GetUint8("ch2-pos")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x01
-		default:
-			return fmt.Errorf("expected 0 or 1 for ch2-pos, got %d", s)
-		}
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
@@ -1096,80 +437,18 @@ var adcPositiveRefPrechargeBuf = &cobra.Command{
 	Long:    "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.PositiveRefPrechargeBuf(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
-		}
-
-		h |= driver.PositiveReferencePrechargeBuffer
-
-		s, err = flags.GetUint8("ch3")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x20
-		default:
-			return fmt.Errorf("expected 0 or 1 for ch3, got %d", s)
-		}
-
-		s, err = flags.GetUint8("ch2")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x10
-		default:
-			return fmt.Errorf("expected 0 or 1 for ch2, got %d", s)
-		}
-
-		s, err = flags.GetUint8("ch1")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x02
-		default:
-			return fmt.Errorf("expected 0 or 1 for ch1, got %d", s)
-		}
-
-		s, err = flags.GetUint8("ch0")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x01
-		default:
-			return fmt.Errorf("expected 0 or 1 for ch0, got %d", s)
-		}
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
@@ -1182,932 +461,662 @@ var adcNegativeRefPrechargeBuf = &cobra.Command{
 	Long:    "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.NegativeRefPrechargeBuf(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
-		}
-
-		h |= driver.NegativeReferencePrechargeBuffer
-
-		s, err = flags.GetUint8("ch3")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x20
-		default:
-			return fmt.Errorf("expected 0 or 1 for ch3, got %d", s)
-		}
-
-		s, err = flags.GetUint8("ch2")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x10
-		default:
-			return fmt.Errorf("expected 0 or 1 for ch2, got %d", s)
-		}
-
-		s, err = flags.GetUint8("ch1")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x02
-		default:
-			return fmt.Errorf("expected 0 or 1 for ch1, got %d", s)
-		}
-
-		s, err = flags.GetUint8("ch0")
-		if err != nil {
-			return err
-		}
-		switch s {
-		case 0:
-			l |= 0x00
-		case 1:
-			l |= 0x01
-		default:
-			return fmt.Errorf("expected 0 or 1 for ch0, got %d", s)
-		}
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
-var adcCH0OffsetMSB = &cobra.Command{
-	Use:   "CH0OffsetMSB",
+var adcCh0OffsetMSB = &cobra.Command{
+	Use:   "Ch0OffsetMSB",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.Ch0OffsetMSB(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
+
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+			log.Println(tx, rx)
 		}
+		return err
+	},
+}
 
-		h |= driver.CH0OffsetMSB
+var adcCh0OffsetMid = &cobra.Command{
+	Use:   "Ch0OffsetMid",
+	Short: "",
+	Long:  "",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var (
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
+		)
 
-		s, err = flags.GetUint8("MSB")
+		tx, rx, err = adcConnection.Ch0OffsetMid(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		l |= s
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
-var adcCH0OffsetMid = &cobra.Command{
-	Use:   "CH0OffsetMid",
+var adcCh0OffsetLSB = &cobra.Command{
+	Use:   "Ch0OffsetLSB",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.Ch0OffsetLSB(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
+
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+			log.Println(tx, rx)
 		}
+		return err
+	},
+}
 
-		h |= driver.CH0OffsetMid
+var adcCh1OffsetMSB = &cobra.Command{
+	Use:   "Ch1OffsetMSB",
+	Short: "",
+	Long:  "",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var (
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
+		)
 
-		s, err = flags.GetUint8("Mid")
+		tx, rx, err = adcConnection.Ch1OffsetMSB(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		l |= s
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
-var adcCH0OffsetLSB = &cobra.Command{
-	Use:   "CH0OffsetLSB",
+var adcCh1OffsetMid = &cobra.Command{
+	Use:   "Ch1OffsetMid",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.Ch1OffsetMid(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
+
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+			log.Println(tx, rx)
 		}
+		return err
+	},
+}
 
-		h |= driver.CH0OffsetLSB
+var adcCh1OffsetLSB = &cobra.Command{
+	Use:   "Ch1OffsetLSB",
+	Short: "",
+	Long:  "",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var (
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
+		)
 
-		s, err = flags.GetUint8("LSB")
+		tx, rx, err = adcConnection.Ch1OffsetLSB(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		l |= s
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
-var adcCH1OffsetMSB = &cobra.Command{
-	Use:   "CH1OffsetMSB",
+var adcCh2OffsetMSB = &cobra.Command{
+	Use:   "Ch2OffsetMSB",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.Ch2OffsetMSB(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
+
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+			log.Println(tx, rx)
 		}
+		return err
+	},
+}
 
-		h |= driver.CH1OffsetMSB
+var adcCh2OffsetMid = &cobra.Command{
+	Use:   "Ch2OffsetMid",
+	Short: "",
+	Long:  "",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var (
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
+		)
 
-		s, err = flags.GetUint8("MSB")
+		tx, rx, err = adcConnection.Ch2OffsetMid(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		l |= s
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
-var adcCH1OffsetMid = &cobra.Command{
-	Use:   "CH1OffsetMid",
+var adcCh2OffsetLSB = &cobra.Command{
+	Use:   "Ch2OffsetLSB",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.Ch2OffsetLSB(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
+
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+			log.Println(tx, rx)
 		}
+		return err
+	},
+}
 
-		h |= driver.CH1OffsetMid
+var adcCh3OffsetMSB = &cobra.Command{
+	Use:   "Ch3OffsetMSB",
+	Short: "",
+	Long:  "",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var (
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
+		)
 
-		s, err = flags.GetUint8("Mid")
+		tx, rx, err = adcConnection.Ch3OffsetMSB(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		l |= s
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
-var adcCH1OffsetLSB = &cobra.Command{
-	Use:   "CH1OffsetLSB",
+var adcCh3OffsetMid = &cobra.Command{
+	Use:   "Ch3OffsetMid",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.Ch3OffsetMid(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
+
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+			log.Println(tx, rx)
 		}
+		return err
+	},
+}
 
-		h |= driver.CH1OffsetLSB
+var adcCh3OffsetLSB = &cobra.Command{
+	Use:   "Ch3OffsetLSB",
+	Short: "",
+	Long:  "",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var (
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
+		)
 
-		s, err = flags.GetUint8("LSB")
+		tx, rx, err = adcConnection.Ch3OffsetLSB(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		l |= s
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
-var adcCH2OffsetMSB = &cobra.Command{
-	Use:   "CH2OffsetMSB",
+var adcCh0GainMSB = &cobra.Command{
+	Use:   "Ch0GainMSB",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.Ch0GainMSB(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
+
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+			log.Println(tx, rx)
 		}
+		return err
+	},
+}
 
-		h |= driver.CH2OffsetMSB
+var adcCh0GainMID = &cobra.Command{
+	Use:   "Ch0GainMID",
+	Short: "",
+	Long:  "",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var (
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
+		)
 
-		s, err = flags.GetUint8("MSB")
+		tx, rx, err = adcConnection.Ch0GainMid(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		l |= s
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
-var adcCH2OffsetMid = &cobra.Command{
-	Use:   "CH2OffsetMid",
+var adcCh0GainLSB = &cobra.Command{
+	Use:   "Ch0GainLSB",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.Ch0GainLSB(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
+
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+			log.Println(tx, rx)
 		}
+		return err
+	},
+}
 
-		h |= driver.CH2OffsetMid
+var adcCh1GainMSB = &cobra.Command{
+	Use:   "Ch1GainMSB",
+	Short: "",
+	Long:  "",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var (
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
+		)
 
-		s, err = flags.GetUint8("Mid")
+		tx, rx, err = adcConnection.Ch1GainMSB(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		l |= s
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
-var adcCH2OffsetLSB = &cobra.Command{
-	Use:   "CH2OffsetLSB",
+var adcCh1GainMID = &cobra.Command{
+	Use:   "Ch1GainMID",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.Ch1GainMid(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
+
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+			log.Println(tx, rx)
 		}
+		return err
+	},
+}
 
-		h |= driver.CH2OffsetLSB
+var adcCh1GainLSB = &cobra.Command{
+	Use:   "Ch1GainLSB",
+	Short: "",
+	Long:  "",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var (
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
+		)
 
-		s, err = flags.GetUint8("LSB")
+		tx, rx, err = adcConnection.Ch1GainLSB(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		l |= s
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
-var adcCH3OffsetMSB = &cobra.Command{
-	Use:   "CH3OffsetMSB",
+var adcCh2GainMSB = &cobra.Command{
+	Use:   "Ch2GainMSB",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.Ch2GainMSB(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
+
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+			log.Println(tx, rx)
 		}
+		return err
+	},
+}
 
-		h |= driver.CH3OffsetMSB
+var adcCh2GainMID = &cobra.Command{
+	Use:   "Ch2GainMID",
+	Short: "",
+	Long:  "",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var (
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
+		)
 
-		s, err = flags.GetUint8("MSB")
+		tx, rx, err = adcConnection.Ch2GainMid(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		l |= s
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
-var adcCH3OffsetMid = &cobra.Command{
-	Use:   "CH3OffsetMid",
+var adcCh2GainLSB = &cobra.Command{
+	Use:   "Ch2GainLSB",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.Ch2GainLSB(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
+
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+			log.Println(tx, rx)
 		}
+		return err
+	},
+}
 
-		h |= driver.CH3OffsetMid
+var adcCh3GainMSB = &cobra.Command{
+	Use:   "Ch3GainMSB",
+	Short: "",
+	Long:  "",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var (
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
+		)
 
-		s, err = flags.GetUint8("Mid")
+		tx, rx, err = adcConnection.Ch3GainMSB(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		l |= s
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
-var adcCH3OffsetLSB = &cobra.Command{
-	Use:   "CH3OffsetLSB",
+var adcCh3GainMID = &cobra.Command{
+	Use:   "Ch3GainMID",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
 
-		write, err = flags.GetBool("write")
+		tx, rx, err = adcConnection.Ch3GainMid(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		if !write {
-			h = h | 0x80
+
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+			log.Println(tx, rx)
 		}
+		return err
+	},
+}
 
-		h |= driver.CH3OffsetLSB
+var adcCh3GainLSB = &cobra.Command{
+	Use:   "Ch3GainLSB",
+	Short: "",
+	Long:  "",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var (
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
+		)
 
-		s, err = flags.GetUint8("LSB")
+		tx, rx, err = adcConnection.Ch3GainLSB(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		l |= s
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
-var adcCH0GainMSB = &cobra.Command{
-	Use:   "CH0GainMSB",
+var adcCh0SyncOffset = &cobra.Command{
+	Use:   "Ch0SyncOffset",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
-		log.Println(s, write, flags)
 
-		err = adcConnection.Transmit([]byte{h, l}, rx)
+		tx, rx, err = adcConnection.Ch0SyncOffset(cmd.Flags())
+		if err != nil {
+			return err
+		}
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
-var adcCH0GainMID = &cobra.Command{
-	Use:   "CH0GainMID",
+var adcCh1SyncOffset = &cobra.Command{
+	Use:   "Ch1SyncOffset",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
-		log.Println(s, write, flags)
 
-		err = adcConnection.Transmit([]byte{h, l}, rx)
+		tx, rx, err = adcConnection.Ch1SyncOffset(cmd.Flags())
+		if err != nil {
+			return err
+		}
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
-var adcCH0GainLSB = &cobra.Command{
-	Use:   "CH0GainLSB",
+var adcCh2SyncOffset = &cobra.Command{
+	Use:   "Ch2SyncOffset",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
-		log.Println(s, write, flags)
 
-		err = adcConnection.Transmit([]byte{h, l}, rx)
+		tx, rx, err = adcConnection.Ch2SyncOffset(cmd.Flags())
+		if err != nil {
+			return err
+		}
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
-var adcCH1GainMSB = &cobra.Command{
-	Use:   "CH1GainMSB",
+var adcCh3SyncOffset = &cobra.Command{
+	Use:   "Ch3SyncOffset",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
-		log.Println(s, write, flags)
 
-		err = adcConnection.Transmit([]byte{h, l}, rx)
-
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+		tx, rx, err = adcConnection.Ch3SyncOffset(cmd.Flags())
+		if err != nil {
+			return err
 		}
-		return err
-	},
-}
-
-var adcCH1GainMID = &cobra.Command{
-	Use:   "CH1GainMID",
-	Short: "",
-	Long:  "",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
-		)
-		log.Println(s, write, flags)
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
-		}
-		return err
-	},
-}
-
-var adcCH1GainLSB = &cobra.Command{
-	Use:   "CH1GainLSB",
-	Short: "",
-	Long:  "",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
-		)
-		log.Println(s, write, flags)
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
-
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
-		}
-		return err
-	},
-}
-
-var adcCH2GainMSB = &cobra.Command{
-	Use:   "CH2GainMSB",
-	Short: "",
-	Long:  "",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
-		)
-		log.Println(s, write, flags)
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
-
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
-		}
-		return err
-	},
-}
-
-var adcCH2GainMID = &cobra.Command{
-	Use:   "CH2GainMID",
-	Short: "",
-	Long:  "",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
-		)
-		log.Println(s, write, flags)
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
-
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
-		}
-		return err
-	},
-}
-
-var adcCH2GainLSB = &cobra.Command{
-	Use:   "CH2GainLSB",
-	Short: "",
-	Long:  "",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
-		)
-		log.Println(s, write, flags)
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
-
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
-		}
-		return err
-	},
-}
-
-var adcCH3GainMSB = &cobra.Command{
-	Use:   "CH3GainMSB",
-	Short: "",
-	Long:  "",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
-		)
-		log.Println(s, write, flags)
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
-
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
-		}
-		return err
-	},
-}
-
-var adcCH3GainMID = &cobra.Command{
-	Use:   "CH3GainMID",
-	Short: "",
-	Long:  "",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
-		)
-		log.Println(s, write, flags)
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
-
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
-		}
-		return err
-	},
-}
-
-var adcCH3GainLSB = &cobra.Command{
-	Use:   "CH3GainLSB",
-	Short: "",
-	Long:  "",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
-		)
-		log.Println(s, write, flags)
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
-
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
-		}
-		return err
-	},
-}
-
-var adcCH0SyncOffset = &cobra.Command{
-	Use:   "CH0SyncOffset",
-	Short: "",
-	Long:  "",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
-		)
-		log.Println(s, write, flags)
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
-
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
-		}
-		return err
-	},
-}
-
-var adcCH1SyncOffset = &cobra.Command{
-	Use:   "CH1SyncOffset",
-	Short: "",
-	Long:  "",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
-		)
-		log.Println(s, write, flags)
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
-
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
-		}
-		return err
-	},
-}
-
-var adcCH2SyncOffset = &cobra.Command{
-	Use:   "CH2SyncOffset",
-	Short: "",
-	Long:  "",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
-		)
-		log.Println(s, write, flags)
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
-
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
-		}
-		return err
-	},
-}
-
-var adcCH3SyncOffset = &cobra.Command{
-	Use:   "CH3SyncOffset",
-	Short: "",
-	Long:  "",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
-		)
-		log.Println(s, write, flags)
-
-		err = adcConnection.Transmit([]byte{h, l}, rx)
-
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
@@ -2119,19 +1128,18 @@ var adcDiagnosticRX = &cobra.Command{
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
-		log.Println(s, write, flags)
 
-		err = adcConnection.Transmit([]byte{h, l}, rx)
+		tx, rx, err = adcConnection.DiagnosticRX(cmd.Flags())
+		if err != nil {
+			return err
+		}
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
@@ -2143,19 +1151,18 @@ var adcDiagnosticMuxControl = &cobra.Command{
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
-		log.Println(s, write, flags)
 
-		err = adcConnection.Transmit([]byte{h, l}, rx)
+		tx, rx, err = adcConnection.DiagnosticMuxControl(cmd.Flags())
+		if err != nil {
+			return err
+		}
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
@@ -2167,19 +1174,18 @@ var adcDiagnosticDelayControl = &cobra.Command{
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
-		log.Println(s, write, flags)
 
-		err = adcConnection.Transmit([]byte{h, l}, rx)
+		tx, rx, err = adcConnection.DiagnosticDelayControl(cmd.Flags())
+		if err != nil {
+			return err
+		}
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
@@ -2191,55 +1197,60 @@ var adcChopControl = &cobra.Command{
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
-			err   error
-			rx    = make([]byte, 2)
-			h, l  uint8
-			s     uint8
-			write bool
-			flags = cmd.Flags()
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
 		)
-		log.Println(s, write, flags)
 
-		err = adcConnection.Transmit([]byte{h, l}, rx)
+		tx, rx, err = adcConnection.ChopControl(cmd.Flags())
+		if err != nil {
+			return err
+		}
 
 		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println([]byte{h, l}, rx)
+			log.Println(tx, rx)
 		}
 		return err
 	},
 }
 
-var adcResetSequence = &cobra.Command{
-	Use:   "reset",
+var adcSoftReset = &cobra.Command{
+	Use:   "SoftReset",
 	Short: "Perform hard reset",
 	Long:  `Hard reset is recommended before using the adc`,
-	Run: func(cmd *cobra.Command, args []string) {
-		r := raspi.NewAdaptor()
-		pin := gpio.NewDirectPinDriver(r, "22")
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var (
+			err error
+			tx  = make([]byte, 2)
+			rx  = make([]byte, 2)
+		)
 
-		_ = pin.DigitalWrite(0)
-		time.Sleep(5 * time.Second)
-		_ = pin.DigitalWrite(1)
-		if err := pin.Halt(); err != nil {
-			log.Fatal(err)
+		tx, rx, err = adcConnection.SoftReset(cmd.Flags())
+		if err != nil {
+			return err
 		}
+
+		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+			log.Println(tx, rx)
+		}
+		return err
 	},
 }
 
 func init() {
-	var f *pflag.FlagSet
+	var f *flag.FlagSet
 	rootCmd.AddCommand(adcCmd)
 	adcCmd.AddCommand(adcChStandby, adcChModeA, adcChModeB, adcChModeSelect,
 		adcPowerMode, adcGeneralConfiguration, adcDataControl, adcInterfaceConfiguration, adcBISTControl, adcDeviceStatus,
 		adcRevisionID, adcGPIOControl, adcGPIOWriteData, adcGPIOReadData, adcPrechargeBuffer1, adcPrechargeBuffer2,
 		adcPositiveRefPrechargeBuf, adcNegativeRefPrechargeBuf,
-		adcCH0OffsetMSB, adcCH0OffsetMid, adcCH0OffsetLSB, adcCH1OffsetMSB, adcCH1OffsetMid, adcCH1OffsetLSB,
-		adcCH2OffsetMSB, adcCH2OffsetMid, adcCH2OffsetLSB, adcCH3OffsetMSB, adcCH3OffsetMid, adcCH3OffsetLSB,
-		adcCH0GainMSB, adcCH0GainMID, adcCH0GainLSB, adcCH1GainMSB, adcCH1GainMID, adcCH1GainLSB,
-		adcCH2GainMSB, adcCH2GainMID, adcCH2GainLSB, adcCH3GainMSB, adcCH3GainMID, adcCH3GainLSB,
-		adcCH0SyncOffset, adcCH1SyncOffset, adcCH2SyncOffset, adcCH3SyncOffset,
+		adcCh0OffsetMSB, adcCh0OffsetMid, adcCh0OffsetLSB, adcCh1OffsetMSB, adcCh1OffsetMid, adcCh1OffsetLSB,
+		adcCh2OffsetMSB, adcCh2OffsetMid, adcCh2OffsetLSB, adcCh3OffsetMSB, adcCh3OffsetMid, adcCh3OffsetLSB,
+		adcCh0GainMSB, adcCh0GainMID, adcCh0GainLSB, adcCh1GainMSB, adcCh1GainMID, adcCh1GainLSB,
+		adcCh2GainMSB, adcCh2GainMID, adcCh2GainLSB, adcCh3GainMSB, adcCh3GainMID, adcCh3GainLSB,
+		adcCh0SyncOffset, adcCh1SyncOffset, adcCh2SyncOffset, adcCh3SyncOffset,
 		adcDiagnosticRX, adcDiagnosticMuxControl, adcDiagnosticDelayControl, adcChopControl,
-		adcResetSequence)
+		adcSoftReset)
 
 	f = adcCmd.PersistentFlags()
 	f.Int("bus", 0, "spi bus number and is usually 0")
@@ -2281,7 +1292,10 @@ func init() {
 
 	f = adcChModeSelect.Flags()
 	f.Bool("write", false, "set the write bit")
-	f.UintSlice("ch", []uint{0, 0, 0, 0}, "set channel mode for channels 0..3 0:Mode A, 1:Mode B")
+	f.Uint8("ch0", 0, "set channel mode for channels 0. 0:Mode A, 1:Mode B")
+	f.Uint8("ch1", 0, "set channel mode for channels 0. 0:Mode A, 1:Mode B")
+	f.Uint8("ch2", 0, "set channel mode for channels 0. 0:Mode A, 1:Mode B")
+	f.Uint8("ch3", 0, "set channel mode for channels 0. 0:Mode A, 1:Mode B")
 	f.SortFlags = false
 
 	// ------------------------
@@ -2404,82 +1418,82 @@ func init() {
 
 	// ------------------------
 
-	f = adcCH0OffsetMSB.Flags()
+	f = adcCh0OffsetMSB.Flags()
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("MSB", 0, "Channel 0 gain MSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
 
 	// ------------------------
 
-	f = adcCH0OffsetMid.Flags()
+	f = adcCh0OffsetMid.Flags()
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("Mid", 0, "Channel 0 gain Mid signed 8 bit integer (default: 0)")
 	f.SortFlags = false
 
 	// ------------------------
 
-	f = adcCH0OffsetLSB.Flags()
+	f = adcCh0OffsetLSB.Flags()
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("LSB", 0, "Channel 0 gain LSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
 
 	// ------------------------
 
-	f = adcCH1OffsetMSB.Flags()
+	f = adcCh1OffsetMSB.Flags()
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("MSB", 0, "Channel 0 gain MSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
 
 	// ------------------------
 
-	f = adcCH1OffsetMid.Flags()
+	f = adcCh1OffsetMid.Flags()
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("Mid", 0, "Channel 0 gain Mid signed 8 bit integer (default: 0)")
 	f.SortFlags = false
 
 	// ------------------------
 
-	f = adcCH1OffsetLSB.Flags()
+	f = adcCh1OffsetLSB.Flags()
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("LSB", 0, "Channel 0 gain LSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
 	// ------------------------
 
-	f = adcCH2OffsetMSB.Flags()
+	f = adcCh2OffsetMSB.Flags()
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("MSB", 0, "Channel 0 gain MSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
 
 	// ------------------------
 
-	f = adcCH2OffsetMid.Flags()
+	f = adcCh2OffsetMid.Flags()
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("Mid", 0, "Channel 0 gain Mid signed 8 bit integer (default: 0)")
 	f.SortFlags = false
 
 	// ------------------------
 
-	f = adcCH2OffsetLSB.Flags()
+	f = adcCh2OffsetLSB.Flags()
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("LSB", 0, "Channel 0 gain LSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
 	// ------------------------
 
-	f = adcCH3OffsetMSB.Flags()
+	f = adcCh3OffsetMSB.Flags()
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("MSB", 0, "Channel 0 gain MSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
 
 	// ------------------------
 
-	f = adcCH3OffsetMid.Flags()
+	f = adcCh3OffsetMid.Flags()
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("Mid", 0, "Channel 0 gain Mid signed 8 bit integer (default: 0)")
 	f.SortFlags = false
 
 	// ------------------------
 
-	f = adcCH3OffsetLSB.Flags()
+	f = adcCh3OffsetLSB.Flags()
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("LSB", 0, "Channel 0 gain LSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
