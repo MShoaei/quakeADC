@@ -3,11 +3,11 @@ package cmd
 import (
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/kataras/iris/v12"
+	flag "github.com/spf13/pflag"
 )
 
 var upgrader = websocket.Upgrader{
@@ -23,7 +23,50 @@ var readParams struct {
 
 var dataFile *os.File
 
-// NewAPI creates a new API which recieves commands and executes them
+// CommandsList is the list of all available commands
+var CommandsList = map[string]func(*flag.FlagSet) ([]byte, []byte, error){
+	"ChStandby":               adcConnection.ChStandby,
+	"ChModeA":                 adcConnection.ChModeA,
+	"ChModeB":                 adcConnection.ChModeB,
+	"ChModeSel":               adcConnection.ChModeSel,
+	"PowerMode":               adcConnection.PowerMode,
+	"GeneralConf":             adcConnection.GeneralConf,
+	"DataControl":             adcConnection.DataControl,
+	"InterfaceConf":           adcConnection.InterfaceConf,
+	"BISTControl":             adcConnection.BISTControl,
+	"DeviceStatus":            adcConnection.DeviceStatus,
+	"RevisionID":              adcConnection.RevisionID,
+	"GPIOControl":             adcConnection.GPIOControl,
+	"GPIOWriteData":           adcConnection.GPIOWriteData,
+	"GPIOReadData":            adcConnection.GPIOReadData,
+	"PrechargeBuffer1":        adcConnection.PrechargeBuffer1,
+	"PrechargeBuffer2":        adcConnection.PrechargeBuffer2,
+	"PositiveRefPrechargeBuf": adcConnection.PositiveRefPrechargeBuf,
+	"NegativeRefPrechargeBuf": adcConnection.NegativeRefPrechargeBuf,
+	"Ch0OffsetMSB":            adcConnection.Ch0OffsetMSB,
+	"Ch0OffsetMid":            adcConnection.Ch0OffsetMid,
+	"Ch0OffsetLSB":            adcConnection.Ch0OffsetLSB,
+	"Ch1OffsetMSB":            adcConnection.Ch1OffsetMSB,
+	"Ch1OffsetMid":            adcConnection.Ch1OffsetMid,
+	"Ch1OffsetLSB":            adcConnection.Ch1OffsetLSB,
+	"Ch2OffsetMSB":            adcConnection.Ch2OffsetMSB,
+	"Ch2OffsetMid":            adcConnection.Ch2OffsetMid,
+	"Ch2OffsetLSB":            adcConnection.Ch2OffsetLSB,
+	"Ch3OffsetMSB":            adcConnection.Ch3OffsetMSB,
+	"Ch3OffsetMid":            adcConnection.Ch3OffsetMid,
+	"Ch3OffsetLSB":            adcConnection.Ch3OffsetLSB,
+	"Ch0SyncOffset":           adcConnection.Ch0SyncOffset,
+	"Ch1SyncOffset":           adcConnection.Ch1SyncOffset,
+	"Ch2SyncOffset":           adcConnection.Ch2SyncOffset,
+	"Ch3SyncOffset":           adcConnection.Ch3SyncOffset,
+	"DiagnosticRX":            adcConnection.DiagnosticRX,
+	"DiagnosticMuxControl":    adcConnection.DiagnosticMuxControl,
+	"DiagnosticDelayControl":  adcConnection.DiagnosticDelayControl,
+	"ChopControl":             adcConnection.ChopControl,
+	"SoftReset":               adcConnection.SoftReset,
+}
+
+// NewAPI creates a new API which receives commands and executes them
 // the server should be started with:
 // $ rpiCMD server
 // the server will listen on port "9090" and accepts POST request to "/command".
@@ -53,31 +96,64 @@ func NewAPI() *iris.Application {
 func commandHandler(ctx iris.Context) {
 	data := &struct {
 		Command string
-		Flags   string
+		Flags   []struct {
+			Name  string
+			Value string
+		}
 	}{}
+	set := flag.NewFlagSet("quakeADC", flag.ExitOnError)
+
 	err := ctx.ReadJSON(data)
 	if err != nil {
-		log.Println(err)
-	}
-	log.Println(data)
-
-	a := []string{"adc", data.Command}
-	a = append(a, strings.Split(data.Flags, " ")...)
-
-	// cmd := cmdMap[data.Command]
-	rootCmd.SetArgs(a)
-	if err := rootCmd.Execute(); err != nil {
-		ctx.StatusCode(iris.StatusNotAcceptable)
-		ctx.JSON(map[string]string{
+		ctx.JSON(iris.Map{
 			"message": "failed with error",
+			//"error":   err.Error(),
+		})
+		log.Println(err)
+		return
+	}
+
+	cmd := CommandsList[data.Command]
+	if cmd == nil {
+		ctx.JSON(iris.Map{
+			"message": "Unknown command",
+			"command": data.Command,
+			//"error":   err.Error(),
+		})
+		log.Printf("unknown command: %s", data.Command)
+		return
+	}
+
+	flags := make([]string, 0, 7)
+	for _, f := range data.Flags {
+		flags = append(flags, f.Name+"="+f.Value)
+	}
+	err = set.ParseAll(flags, nil)
+	if err != nil {
+		ctx.JSON(iris.Map{
+			"message": "failed with error",
+			//"error":   err.Error(),
+		})
+		log.Printf("flag parse failed with error: %s", err)
+		return
+	}
+
+	tx, rx, err := cmd(set)
+	if err != nil {
+		ctx.StatusCode(iris.StatusNotAcceptable)
+		ctx.JSON(iris.Map{
+			"message": "failed with error",
+			//"error":   err.Error(),
 		})
 		log.Printf("command %s failed: %s", data.Command, err)
 		return
 	}
 
 	ctx.StatusCode(iris.StatusOK)
-	ctx.JSON(map[string]string{
+	ctx.JSON(iris.Map{
 		"message": "success",
+		"tx":      tx,
+		"rx":      rx,
 	})
 }
 
