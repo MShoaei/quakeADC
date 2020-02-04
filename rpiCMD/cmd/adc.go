@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-	"github.com/MShoaei/quakeADC/driver"
 	"github.com/spf13/cobra"
 	flag "github.com/spf13/pflag"
 	"log"
@@ -18,44 +16,6 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		var (
-			err             error
-			speed           int64
-			bus, chip, mode int
-		)
-		if adcConnection != nil {
-			return nil
-		}
-		bus, err = cmd.Flags().GetInt("bus")
-		if err != nil {
-			return err
-		}
-		chip, err = cmd.Flags().GetInt("chip")
-		if err != nil {
-			return err
-		}
-		mode, err = cmd.Flags().GetInt("mode")
-		if err != nil {
-			return err
-		}
-		speed, err = cmd.Flags().GetInt64("speed")
-		if err != nil {
-			return err
-		}
-		if mode < 0 || mode > 3 {
-			return fmt.Errorf("invalid mode! expected value [0..3], got %d", mode)
-		}
-
-		if adcConnection == nil {
-			adcConnection, err = driver.GetSpiConnection(bus, chip, mode, 8, speed)
-		}
-
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
-			log.Println(speed)
-		}
-		return err
-	},
 }
 
 var adcChStandby = &cobra.Command{
@@ -1252,16 +1212,6 @@ func init() {
 		adcDiagnosticRX, adcDiagnosticMuxControl, adcDiagnosticDelayControl, adcChopControl,
 		adcSoftReset)
 
-	f = adcCmd.PersistentFlags()
-	f.Int("bus", 0, "spi bus number and is usually 0")
-	f.Int("chip", 0, "spi chipSelect number")
-	f.Int("mode", 0, "spi mode number [0..3]")
-	f.Int64("speed", 50000, "spi connection speed in Hz")
-	f.BoolP("debug", "V", false, "Debug Mode. Print Sent and received values.")
-	c := f.Lookup("debug")
-	c.NoOptDefVal = "true"
-	f.SortFlags = false
-
 	// ------------------------
 
 	f = adcChStandby.Flags()
@@ -1273,7 +1223,7 @@ func init() {
 	f.Bool("ch1", true, "channels 0 standby mode. true/t: Standby, false/f: Enabled")
 	f.Bool("ch0", true, "channels 0 standby mode. true/t: Standby, false/f: Enabled")
 	f.SortFlags = false
-
+	flagsList["ChStandby"] = f
 	// ------------------------
 
 	f = adcChModeA.Flags()
@@ -1281,12 +1231,14 @@ func init() {
 	f.Uint8("f-type", 1, "Filter Type Selection 0: Wideband, 1: Sinc5")
 	f.Uint16("dec-rate", 1024, "Decimation Rate Selection accepted values: 32, 64, 128, 256, 512, 1024")
 	f.SortFlags = false
+	flagsList["ChModeA"] = f
 
 	f = adcChModeB.Flags()
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("f-type", 1, "Filter Type Selection 0: Wideband, 1: Sinc5")
 	f.Uint16("dec-rate", 1024, "Decimation Rate Selection accepted values: 32, 64, 128, 256, 512, 1024")
 	f.SortFlags = false
+	flagsList["ChModeB"] = f
 
 	// ------------------------
 
@@ -1297,6 +1249,7 @@ func init() {
 	f.Uint8("ch2", 0, "set channel mode for channels 0. 0:Mode A, 1:Mode B")
 	f.Uint8("ch3", 0, "set channel mode for channels 0. 0:Mode A, 1:Mode B")
 	f.SortFlags = false
+	flagsList["ChModeSel"] = f
 
 	// ------------------------
 
@@ -1307,6 +1260,7 @@ func init() {
 	f.Uint8("lvds-clk", 0, "0: disable LVDS clock, 1: enable LVDS clock")
 	f.Uint8("mclk-div", 0, "0: set to MCLK/32 for low power mode, 2: set to MCLK/8 for median mode, 3: set to MCLK/4 for fast mode")
 	f.SortFlags = false
+	flagsList["PowerMode"] = f
 
 	// ------------------------
 
@@ -1316,6 +1270,7 @@ func init() {
 	f.Uint8("vcm-pd", 0, "VCM buffer power-down. 0: enabled, 1: disabled")
 	f.Uint8("vcm-vsel", 0, "VCM voltage select bits. 0: (AVDD1 − AVSS)/2 V, 1: 1.65 V, 2: 2.5 V, 3: 2.14 V")
 	f.SortFlags = false
+	flagsList["GeneralConf"] = f
 
 	// ------------------------
 
@@ -1325,6 +1280,7 @@ func init() {
 	f.Uint8("single-shot", 0, "One-shot mode. Enables one-shot mode. In one-shot mode, the AD7768-4 output a conversion result in response to a SYNC_IN rising edge. 0: Disabled, 1: Enabled")
 	f.Uint8("spi-reset", 0, "Soft reset. Two successive commands must be received in the correct order to generate a reset. 0: No effect, 1: No effect, 2: Second reset command, 3: First reset command")
 	f.SortFlags = false
+	flagsList["DataControl"] = f
 
 	// ------------------------
 
@@ -1333,6 +1289,7 @@ func init() {
 	f.Uint8("crc-sel", 0, "CRC select. These bits allow the user to implement a CRC on the data interface. 0: No CRC. Status bits with every conversion, 1: Replace the header with CRC message every 4 samples, 2: Replace the header with CRC message every 16 samples, 3: Replace the header with CRC message every 16 samples")
 	f.Uint8("dclk-div", 0, "DCLK divider. These bits control division of the DCLK clock used to clock out conversion data on the DOUTx pins. 0: Divide by 8, 1: Divide by 4, 2: Divide by 2, 3: No division")
 	f.SortFlags = false
+	flagsList["InterfaceConf"] = f
 
 	// ------------------------
 
@@ -1340,14 +1297,19 @@ func init() {
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("ram-bist-start", 0, "RAM BIST. 0: Off, 1: Begin RAM BIST")
 	f.SortFlags = false
+	flagsList["BISTControl"] = f
 
 	// ------------------------
 
+	f = adcDeviceStatus.Flags()
 	// adcDeviceStatus
+	flagsList["DeviceStatus"] = f
 
 	// ------------------------
 
+	f = adcRevisionID.Flags()
 	// adcRevisionID
+	flagsList["RevisionID"] = f
 
 	// ------------------------
 
@@ -1360,6 +1322,7 @@ func init() {
 	f.Uint8("gpio1", 0, "GPIO1 Direction. 0: Input, 1: Output")
 	f.Uint8("gpio0", 0, "GPIO0 Direction. 0: Input, 1: Output")
 	f.SortFlags = false
+	flagsList["GPIOControl"] = f
 
 	// ------------------------
 
@@ -1371,10 +1334,13 @@ func init() {
 	f.Uint8("gpio1", 0, "GPIO1/MODE1")
 	f.Uint8("gpio0", 0, "GPIO0/MODE0")
 	f.SortFlags = false
+	flagsList["GPIOWriteData"] = f
 
 	// ------------------------
 
+	f = adcGPIOReadData.Flags()
 	// adcGPIOReadData
+	flagsList["GPIOReadData"] = f
 
 	// ------------------------
 
@@ -1385,6 +1351,7 @@ func init() {
 	f.Uint8("ch0-neg", 1, "0: Off, 1: On (default: 1)")
 	f.Uint8("ch0-pos", 1, "0: Off, 1: On (default: 1)")
 	f.SortFlags = false
+	flagsList["PrechargeBuffer1"] = f
 
 	// ------------------------
 
@@ -1395,6 +1362,7 @@ func init() {
 	f.Uint8("ch2-neg", 1, "0: Off, 1: On (default: 1)")
 	f.Uint8("ch2-pos", 1, "0: Off, 1: On (default: 1)")
 	f.SortFlags = false
+	flagsList["PrechargeBuffer2"] = f
 
 	// ------------------------
 
@@ -1405,6 +1373,7 @@ func init() {
 	f.Uint8("ch1", 1, "0: Off, 1: On (default: 0)")
 	f.Uint8("ch0", 1, "0: Off, 1: On (default: 0)")
 	f.SortFlags = false
+	flagsList["PositiveRefPrechargeBuf"] = f
 
 	// ------------------------
 
@@ -1415,89 +1384,228 @@ func init() {
 	f.Uint8("ch1", 1, "0: Off, 1: On (default: 0)")
 	f.Uint8("ch0", 1, "0: Off, 1: On (default: 0)")
 	f.SortFlags = false
+	flagsList["NegativeRefPrechargeBuf"] = f
 
 	// ------------------------
 
 	f = adcCh0OffsetMSB.Flags()
 	f.Bool("write", false, "set the write bit")
-	f.Uint8("MSB", 0, "Channel 0 gain MSB signed 8 bit integer (default: 0)")
+	f.Uint8("MSB", 0, "Channel 0 offset MSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
+	flagsList["Ch0OffsetMSB"] = f
 
 	// ------------------------
 
 	f = adcCh0OffsetMid.Flags()
 	f.Bool("write", false, "set the write bit")
-	f.Uint8("Mid", 0, "Channel 0 gain Mid signed 8 bit integer (default: 0)")
+	f.Uint8("Mid", 0, "Channel 0 offset Mid signed 8 bit integer (default: 0)")
 	f.SortFlags = false
+	flagsList["Ch0OffsetMid"] = f
 
 	// ------------------------
 
 	f = adcCh0OffsetLSB.Flags()
 	f.Bool("write", false, "set the write bit")
-	f.Uint8("LSB", 0, "Channel 0 gain LSB signed 8 bit integer (default: 0)")
+	f.Uint8("LSB", 0, "Channel 0 offset LSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
+	flagsList["Ch0OffsetLSB"] = f
 
 	// ------------------------
 
 	f = adcCh1OffsetMSB.Flags()
 	f.Bool("write", false, "set the write bit")
-	f.Uint8("MSB", 0, "Channel 0 gain MSB signed 8 bit integer (default: 0)")
+	f.Uint8("MSB", 0, "Channel 0 offset MSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
+	flagsList["Ch1OffsetMSB"] = f
 
 	// ------------------------
 
 	f = adcCh1OffsetMid.Flags()
 	f.Bool("write", false, "set the write bit")
-	f.Uint8("Mid", 0, "Channel 0 gain Mid signed 8 bit integer (default: 0)")
+	f.Uint8("Mid", 0, "Channel 0 offset Mid signed 8 bit integer (default: 0)")
 	f.SortFlags = false
+	flagsList["Ch1OffsetMid"] = f
 
 	// ------------------------
 
 	f = adcCh1OffsetLSB.Flags()
 	f.Bool("write", false, "set the write bit")
-	f.Uint8("LSB", 0, "Channel 0 gain LSB signed 8 bit integer (default: 0)")
+	f.Uint8("LSB", 0, "Channel 0 offset LSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
+	flagsList["Ch1OffsetLSB"] = f
 	// ------------------------
 
 	f = adcCh2OffsetMSB.Flags()
 	f.Bool("write", false, "set the write bit")
-	f.Uint8("MSB", 0, "Channel 0 gain MSB signed 8 bit integer (default: 0)")
+	f.Uint8("MSB", 0, "Channel 0 offset MSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
+	flagsList["Ch2OffsetMSB"] = f
 
 	// ------------------------
 
 	f = adcCh2OffsetMid.Flags()
 	f.Bool("write", false, "set the write bit")
-	f.Uint8("Mid", 0, "Channel 0 gain Mid signed 8 bit integer (default: 0)")
+	f.Uint8("Mid", 0, "Channel 0 offset Mid signed 8 bit integer (default: 0)")
 	f.SortFlags = false
+	flagsList["Ch2OffsetMid"] = f
 
 	// ------------------------
 
 	f = adcCh2OffsetLSB.Flags()
 	f.Bool("write", false, "set the write bit")
-	f.Uint8("LSB", 0, "Channel 0 gain LSB signed 8 bit integer (default: 0)")
+	f.Uint8("LSB", 0, "Channel 0 offset LSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
+	flagsList["Ch2OffsetLSB"] = f
 	// ------------------------
 
 	f = adcCh3OffsetMSB.Flags()
 	f.Bool("write", false, "set the write bit")
-	f.Uint8("MSB", 0, "Channel 0 gain MSB signed 8 bit integer (default: 0)")
+	f.Uint8("MSB", 0, "Channel 0 offset MSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
+	flagsList["Ch3OffsetMSB"] = f
 
 	// ------------------------
 
 	f = adcCh3OffsetMid.Flags()
 	f.Bool("write", false, "set the write bit")
-	f.Uint8("Mid", 0, "Channel 0 gain Mid signed 8 bit integer (default: 0)")
+	f.Uint8("Mid", 0, "Channel 0 offset Mid signed 8 bit integer (default: 0)")
 	f.SortFlags = false
+	flagsList["Ch3OffsetMid"] = f
 
 	// ------------------------
 
 	f = adcCh3OffsetLSB.Flags()
 	f.Bool("write", false, "set the write bit")
-	f.Uint8("LSB", 0, "Channel 0 gain LSB signed 8 bit integer (default: 0)")
+	f.Uint8("LSB", 0, "Channel 0 offset LSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
+	flagsList["Ch3OffsetLSB"] = f
 
 	// ------------------------
+
+	f = adcCh0GainMSB.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("MSB", 0, "Channel 0 gain MSB signed 8 bit integer (default: 0)")
+	f.SortFlags = false
+	flagsList["Ch0GainMSB"] = f
+
+	// ------------------------
+
+	f = adcCh0GainMID.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("Mid", 0, "Channel 0 gain Mid signed 8 bit integer (default: 0)")
+	f.SortFlags = false
+	flagsList["Ch0GainMSB"] = f
+
+	// ------------------------
+
+	f = adcCh0GainLSB.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("LSB", 0, "Channel 0 gain LSB signed 8 bit integer (default: 0)")
+	f.SortFlags = false
+	flagsList["Ch0GainMSB"] = f
+
+	// ------------------------
+
+	f = adcCh1GainMSB.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("MSB", 0, "Channel 0 gain MSB signed 8 bit integer (default: 0)")
+	f.SortFlags = false
+	flagsList["Ch1GainMSB"] = f
+
+	// ------------------------
+
+	f = adcCh1GainMID.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("Mid", 0, "Channel 0 gain Mid signed 8 bit integer (default: 0)")
+	f.SortFlags = false
+	flagsList["Ch1GainMSB"] = f
+
+	// ------------------------
+
+	f = adcCh1GainLSB.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("LSB", 0, "Channel 0 gain LSB signed 8 bit integer (default: 0)")
+	f.SortFlags = false
+	flagsList["Ch1GainMSB"] = f
+
+	// ------------------------
+
+	f = adcCh2GainMSB.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("MSB", 0, "Channel 0 gain MSB signed 8 bit integer (default: 0)")
+	f.SortFlags = false
+	flagsList["Ch2GainMSB"] = f
+
+	// ------------------------
+
+	f = adcCh2GainMID.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("Mid", 0, "Channel 0 gain Mid signed 8 bit integer (default: 0)")
+	f.SortFlags = false
+	flagsList["Ch2GainMSB"] = f
+
+	// ------------------------
+
+	f = adcCh2GainLSB.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("LSB", 0, "Channel 0 gain LSB signed 8 bit integer (default: 0)")
+	f.SortFlags = false
+	flagsList["Ch2GainMSB"] = f
+
+	// ------------------------
+
+	f = adcCh3GainMSB.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("MSB", 0, "Channel 0 gain MSB signed 8 bit integer (default: 0)")
+	f.SortFlags = false
+	flagsList["Ch3GainMSB"] = f
+
+	// ------------------------
+
+	f = adcCh3GainMID.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("Mid", 0, "Channel 0 gain Mid signed 8 bit integer (default: 0)")
+	f.SortFlags = false
+	flagsList["Ch3GainMSB"] = f
+
+	// ------------------------
+
+	f = adcCh3GainLSB.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("LSB", 0, "Channel 0 gain LSB signed 8 bit integer (default: 0)")
+	f.SortFlags = false
+	flagsList["Ch3GainMSB"] = f
+
+	// ------------------------
+
+	f = adcCh0SyncOffset.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("offset", 0, "Channel 0 sync phase offset signed 8 bit integer (default: 0)")
+	f.SortFlags = false
+	flagsList["Ch0SyncOffset"] = f
+
+	// ------------------------
+
+	f = adcCh1SyncOffset.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("offset", 0, "Channel 1 sync phase offset signed 8 bit integer (default: 0)")
+	f.SortFlags = false
+	flagsList["Ch1SyncOffset"] = f
+
+	// ------------------------
+
+	f = adcCh2SyncOffset.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("offset", 0, "Channel 2 sync phase offset signed 8 bit integer (default: 0)")
+	f.SortFlags = false
+	flagsList["Ch2SyncOffset"] = f
+
+	// ------------------------
+
+	f = adcCh3SyncOffset.Flags()
+	f.Bool("write", false, "set the write bit")
+	f.Uint8("offset", 0, "Channel 3 sync phase offset signed 8 bit integer (default: 0)")
+	f.SortFlags = false
+	flagsList["Ch3SyncOffset"] = f
 
 }

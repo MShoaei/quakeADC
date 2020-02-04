@@ -10,6 +10,7 @@ require (
 	github.com/google/gopacket v1.1.17
 	github.com/gorilla/websocket v1.4.1
 	github.com/imkira/go-interpol v1.1.0 // indirect
+	github.com/iris-contrib/middleware/cors v0.0.0-20191219204441-78279b78a367
 	github.com/json-iterator/go v1.1.9 // indirect
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
 	github.com/kataras/iris/v12 v12.1.4

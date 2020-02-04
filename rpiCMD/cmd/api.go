@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/iris-contrib/middleware/cors"
 	"github.com/kataras/iris/v12"
 	flag "github.com/spf13/pflag"
 )
@@ -24,47 +26,9 @@ var readParams struct {
 var dataFile *os.File
 
 // CommandsList is the list of all available commands
-var CommandsList = map[string]func(*flag.FlagSet) ([]byte, []byte, error){
-	"ChStandby":               adcConnection.ChStandby,
-	"ChModeA":                 adcConnection.ChModeA,
-	"ChModeB":                 adcConnection.ChModeB,
-	"ChModeSel":               adcConnection.ChModeSel,
-	"PowerMode":               adcConnection.PowerMode,
-	"GeneralConf":             adcConnection.GeneralConf,
-	"DataControl":             adcConnection.DataControl,
-	"InterfaceConf":           adcConnection.InterfaceConf,
-	"BISTControl":             adcConnection.BISTControl,
-	"DeviceStatus":            adcConnection.DeviceStatus,
-	"RevisionID":              adcConnection.RevisionID,
-	"GPIOControl":             adcConnection.GPIOControl,
-	"GPIOWriteData":           adcConnection.GPIOWriteData,
-	"GPIOReadData":            adcConnection.GPIOReadData,
-	"PrechargeBuffer1":        adcConnection.PrechargeBuffer1,
-	"PrechargeBuffer2":        adcConnection.PrechargeBuffer2,
-	"PositiveRefPrechargeBuf": adcConnection.PositiveRefPrechargeBuf,
-	"NegativeRefPrechargeBuf": adcConnection.NegativeRefPrechargeBuf,
-	"Ch0OffsetMSB":            adcConnection.Ch0OffsetMSB,
-	"Ch0OffsetMid":            adcConnection.Ch0OffsetMid,
-	"Ch0OffsetLSB":            adcConnection.Ch0OffsetLSB,
-	"Ch1OffsetMSB":            adcConnection.Ch1OffsetMSB,
-	"Ch1OffsetMid":            adcConnection.Ch1OffsetMid,
-	"Ch1OffsetLSB":            adcConnection.Ch1OffsetLSB,
-	"Ch2OffsetMSB":            adcConnection.Ch2OffsetMSB,
-	"Ch2OffsetMid":            adcConnection.Ch2OffsetMid,
-	"Ch2OffsetLSB":            adcConnection.Ch2OffsetLSB,
-	"Ch3OffsetMSB":            adcConnection.Ch3OffsetMSB,
-	"Ch3OffsetMid":            adcConnection.Ch3OffsetMid,
-	"Ch3OffsetLSB":            adcConnection.Ch3OffsetLSB,
-	"Ch0SyncOffset":           adcConnection.Ch0SyncOffset,
-	"Ch1SyncOffset":           adcConnection.Ch1SyncOffset,
-	"Ch2SyncOffset":           adcConnection.Ch2SyncOffset,
-	"Ch3SyncOffset":           adcConnection.Ch3SyncOffset,
-	"DiagnosticRX":            adcConnection.DiagnosticRX,
-	"DiagnosticMuxControl":    adcConnection.DiagnosticMuxControl,
-	"DiagnosticDelayControl":  adcConnection.DiagnosticDelayControl,
-	"ChopControl":             adcConnection.ChopControl,
-	"SoftReset":               adcConnection.SoftReset,
-}
+var CommandsList map[string]func(*flag.FlagSet) ([]byte, []byte, error)
+
+var flagsList = map[string]*flag.FlagSet{}
 
 // NewAPI creates a new API which receives commands and executes them
 // the server should be started with:
@@ -84,10 +48,13 @@ func NewAPI() *iris.Application {
 	api.RegisterView(iris.HTML(templates, ".html").Reload(true))
 
 	api.Get("/", homeHandler)
-	api.Post("/command", commandHandler)
+
 	api.Get("/readlive", readLiveHandler)
 	api.Post("/readlive", readLivePostHandler)
 	// api.Any("/readlive", readLiveHandler)
+	api.Use(cors.AllowAll())
+	api.Options("/command", homeHandler)
+	api.Post("/command", commandHandler)
 	api.Get("/getfile", getFileHandler)
 
 	return api
@@ -101,7 +68,6 @@ func commandHandler(ctx iris.Context) {
 			Value string
 		}
 	}{}
-	set := flag.NewFlagSet("quakeADC", flag.ExitOnError)
 
 	err := ctx.ReadJSON(data)
 	if err != nil {
@@ -124,11 +90,22 @@ func commandHandler(ctx iris.Context) {
 		return
 	}
 
+	set := flagsList[data.Command]
+	if set == nil { // should never happen!
+		ctx.JSON(iris.Map{
+			"message": "flag set not found",
+			"command": data.Command,
+			//"error":   err.Error(),
+		})
+		log.Printf("unknown command: %s", data.Command)
+		return
+	}
+
 	flags := make([]string, 0, 7)
 	for _, f := range data.Flags {
 		flags = append(flags, f.Name+"="+f.Value)
 	}
-	err = set.ParseAll(flags, nil)
+	err = set.Parse(flags)
 	if err != nil {
 		ctx.JSON(iris.Map{
 			"message": "failed with error",
@@ -150,10 +127,11 @@ func commandHandler(ctx iris.Context) {
 	}
 
 	ctx.StatusCode(iris.StatusOK)
+	log.Printf("tx: %v, rx: %v", tx, rx)
 	ctx.JSON(iris.Map{
 		"message": "success",
-		"tx":      tx,
-		"rx":      rx,
+		"tx":      fmt.Sprintf("%v", tx),
+		"rx":      fmt.Sprintf("%v", rx),
 	})
 }
 
