@@ -2,15 +2,14 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/MShoaei/quakeADC/driver"
-	flag "github.com/spf13/pflag"
 	"log"
 	"os"
 	"path"
 
-	"github.com/spf13/cobra"
-
+	"github.com/MShoaei/quakeADC/driver"
 	homedir "github.com/mitchellh/go-homedir"
+	"github.com/spf13/cobra"
+	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -36,6 +35,12 @@ to quickly create a Cobra application.`,
 			speed           int64
 			bus, chip, mode int
 		)
+
+		if skip, _ := cmd.Flags().GetBool("skip"); skip {
+			log.Println("Skipping")
+			return nil
+		}
+
 		if adcConnection != nil {
 			return nil
 		}
@@ -67,8 +72,8 @@ to quickly create a Cobra application.`,
 			return err
 		}
 		initCommands()
-
-		if debug, _ := cmd.PersistentFlags().GetBool("debug"); debug {
+		log.Println("initialized")
+		if debug, _ := cmd.Flags().GetBool("debug"); debug {
 			log.Println(speed)
 		}
 		return err
@@ -142,6 +147,7 @@ func init() {
 	f.Int("mode", 0, "spi mode number [0..3]")
 	f.Int64("speed", 50000, "spi connection speed in Hz")
 	f.BoolP("debug", "V", false, "Debug Mode. Print Sent and received values.")
+	f.BoolP("skip", "S", false, "Skip initializing spi connection. ONLY FOR TEST")
 	c := f.Lookup("debug")
 	c.NoOptDefVal = "true"
 	f.SortFlags = false
