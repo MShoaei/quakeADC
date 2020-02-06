@@ -41,11 +41,11 @@ var flagsList = map[string]*flag.FlagSet{}
 //}
 func NewAPI() *iris.Application {
 	api := iris.Default()
-	var templates string
-	if templates = os.Getenv("TEMPLATES_DIR"); templates == "" {
-		templates = "./templates"
-	}
-	api.RegisterView(iris.HTML(templates, ".html").Reload(true))
+	//var templates string
+	//if templates = os.Getenv("TEMPLATES_DIR"); templates == "" {
+	//	templates = "./templates"
+	//}
+	//api.RegisterView(iris.HTML("dist", ".html").Reload(true))
 
 	api.Get("/", homeHandler)
 
@@ -71,6 +71,7 @@ func commandHandler(ctx iris.Context) {
 
 	err := ctx.ReadJSON(data)
 	if err != nil {
+		ctx.StatusCode(iris.StatusBadRequest)
 		ctx.JSON(iris.Map{
 			"message": "failed with error",
 			//"error":   err.Error(),
@@ -81,6 +82,7 @@ func commandHandler(ctx iris.Context) {
 
 	cmd := CommandsList[data.Command]
 	if cmd == nil {
+		ctx.StatusCode(iris.StatusNotImplemented)
 		ctx.JSON(iris.Map{
 			"message": "Unknown command",
 			"command": data.Command,
@@ -92,6 +94,7 @@ func commandHandler(ctx iris.Context) {
 
 	set := flagsList[data.Command]
 	if set == nil { // should never happen!
+		ctx.StatusCode(iris.StatusNotImplemented)
 		ctx.JSON(iris.Map{
 			"message": "flag set not found",
 			"command": data.Command,
@@ -107,6 +110,7 @@ func commandHandler(ctx iris.Context) {
 	}
 	err = set.Parse(flags)
 	if err != nil {
+		ctx.StatusCode(iris.StatusInternalServerError)
 		ctx.JSON(iris.Map{
 			"message": "failed with error",
 			//"error":   err.Error(),
@@ -183,5 +187,7 @@ func getFileHandler(ctx iris.Context) {
 }
 
 func homeHandler(ctx iris.Context) {
-	ctx.View("ws.html")
+	ctx.JSON(iris.Map{
+		"message": "Home api",
+	})
 }
