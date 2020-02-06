@@ -86,10 +86,12 @@ const (
 	ChopControl
 )
 
+// Adc77684 is an SPI connection to send commands and receive responses
 type Adc77684 struct {
 	connection *spi.SpiConnection
 }
 
+// GetSpiConnection creates a new connection to send commands on.
 func GetSpiConnection(busNum, chipNum, mode, bits int, maxSpeed int64) (*Adc77684, error) {
 	c, err := spi.GetSpiConnection(busNum, chipNum, mode, bits, maxSpeed)
 	if err != nil {
@@ -99,18 +101,22 @@ func GetSpiConnection(busNum, chipNum, mode, bits int, maxSpeed int64) (*Adc7768
 	return &Adc77684{connection: c.(*spi.SpiConnection)}, nil
 }
 
+// Transmit is used to send a new command and receive last commands response
 func (adc *Adc77684) Transmit(tx, rx []byte) error {
 	return adc.connection.Tx(tx, rx)
 }
 
+// Write sends command and ignores previous commands response
 func (adc *Adc77684) Write(tx []byte) error {
 	return adc.connection.Tx(tx, nil)
 }
 
+// Read reads the response of previous command
 func (adc *Adc77684) Read(rx []byte) error {
 	return adc.connection.Tx(nil, rx)
 }
 
+// Close closes the connection and frees the resources
 func (adc *Adc77684) Close() error {
 	return adc.connection.Close()
 }
