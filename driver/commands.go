@@ -2,11 +2,12 @@ package driver
 
 import (
 	"fmt"
+	"log"
+	"time"
+
 	flag "github.com/spf13/pflag"
 	"gobot.io/x/gobot/drivers/gpio"
 	"gobot.io/x/gobot/platforms/raspi"
-	"log"
-	"time"
 )
 
 func (adc *Adc77684) ChStandby(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
