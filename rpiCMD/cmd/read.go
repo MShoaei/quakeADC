@@ -90,9 +90,9 @@ func read(opt readOptions) error {
 		b.Grow(100)
 		for {
 			var signCH0 uint32 = 0
-			//var signCH1 int32 = 0
-			//var signCH2 int32 = 0
-			//var signCH3 int32 = 0
+			var signCH1 uint32 = 0
+			var signCH2 uint32 = 0
+			var signCH3 uint32 = 0
 			var packet []byte
 			var ok bool
 
@@ -110,23 +110,27 @@ func read(opt readOptions) error {
 			}
 			ch0Value := (uint32(packet[24]) << 16) + (uint32(packet[25]) << 8) + (uint32(packet[26]))
 
-			//if int8(packet[28]) < 0 {
-			//	signCH1 = -1 << 24
-			//}
-			//ch1Value := signCH1 + (int32(packet[28]) << 16) + (int32(packet[29]) << 8) + int32(packet[30])
-			//
-			//if int8(packet[32]) < 0 {
-			//	signCH2 = -1 << 24
-			//}
-			//ch2Value := signCH2 + (int32(packet[32]) << 16) + (int32(packet[33]) << 8) + (int32(packet[34]))
-			//
-			//if int8(packet[36]) < 0 {
-			//	signCH3 = -1 << 24
-			//}
-			//ch3Value := signCH3 + (int32(packet[36]) << 16) + (int32(packet[37]) << 8) + (int32(packet[38]))
+			if int8(packet[28]) < 0 {
+				signCH1 = 255 << 24
+			}
+			ch1Value := (uint32(packet[28]) << 16) + (uint32(packet[29]) << 8) + uint32(packet[30])
+
+			if int8(packet[32]) < 0 {
+				signCH2 = 255 << 24
+			}
+			ch2Value := (uint32(packet[32]) << 16) + (uint32(packet[33]) << 8) + (uint32(packet[34]))
+
+			if int8(packet[36]) < 0 {
+				signCH3 = 255 << 24
+			}
+			ch3Value := (uint32(packet[36]) << 16) + (uint32(packet[37]) << 8) + (uint32(packet[38]))
 
 			//b.WriteString(fmt.Sprintf("%d,%d,%d,%d,%d,%d\n", t, adcNum, ch0Value, ch1Value, ch2Value, ch3Value))
-			b.WriteString(fmt.Sprintf("%d,%d\n", ch0Value, int32(ch0Value+signCH0)))
+			b.WriteString(fmt.Sprintf("%d,%d,%d,%d,%d,%d,%d,%d\n",
+				ch0Value, int32(ch0Value+signCH0),
+				ch1Value, int32(ch1Value+signCH1),
+				ch2Value, int32(ch2Value+signCH2),
+				ch3Value, int32(ch3Value+signCH3)))
 
 			fmt.Fprintf(dataFile, b.String())
 			select {
