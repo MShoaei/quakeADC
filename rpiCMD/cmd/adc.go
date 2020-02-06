@@ -1,9 +1,10 @@
 package cmd
 
 import (
+	"log"
+
 	"github.com/spf13/cobra"
 	flag "github.com/spf13/pflag"
-	"log"
 )
 
 // adcCmd represents the adc command
@@ -34,7 +35,7 @@ var adcChStandby = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -58,7 +59,7 @@ var adcChModeA = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -81,7 +82,7 @@ var adcChModeB = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -104,7 +105,7 @@ var adcChModeSelect = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -127,7 +128,7 @@ var adcPowerMode = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -150,7 +151,7 @@ var adcGeneralConfiguration = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -173,7 +174,7 @@ var adcDataControl = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -196,7 +197,7 @@ var adcInterfaceConfiguration = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -219,7 +220,7 @@ var adcBISTControl = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -242,7 +243,7 @@ var adcDeviceStatus = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -266,7 +267,7 @@ var adcRevisionID = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -290,7 +291,7 @@ var adcGPIOControl = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -314,7 +315,7 @@ var adcGPIOWriteData = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -337,7 +338,7 @@ var adcGPIOReadData = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -360,7 +361,7 @@ var adcPrechargeBuffer1 = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -383,7 +384,7 @@ var adcPrechargeBuffer2 = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -407,7 +408,7 @@ var adcPositiveRefPrechargeBuf = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -431,7 +432,7 @@ var adcNegativeRefPrechargeBuf = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -454,7 +455,7 @@ var adcCh0OffsetMSB = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -477,7 +478,7 @@ var adcCh0OffsetMid = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -500,7 +501,7 @@ var adcCh0OffsetLSB = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -523,7 +524,7 @@ var adcCh1OffsetMSB = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -546,7 +547,7 @@ var adcCh1OffsetMid = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -569,7 +570,7 @@ var adcCh1OffsetLSB = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -592,7 +593,7 @@ var adcCh2OffsetMSB = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -615,7 +616,7 @@ var adcCh2OffsetMid = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -638,7 +639,7 @@ var adcCh2OffsetLSB = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -661,7 +662,7 @@ var adcCh3OffsetMSB = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -684,7 +685,7 @@ var adcCh3OffsetMid = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -707,7 +708,7 @@ var adcCh3OffsetLSB = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -730,7 +731,7 @@ var adcCh0GainMSB = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -753,7 +754,7 @@ var adcCh0GainMID = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -776,7 +777,7 @@ var adcCh0GainLSB = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -799,7 +800,7 @@ var adcCh1GainMSB = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -822,7 +823,7 @@ var adcCh1GainMID = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -845,7 +846,7 @@ var adcCh1GainLSB = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -868,7 +869,7 @@ var adcCh2GainMSB = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -891,7 +892,7 @@ var adcCh2GainMID = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -914,7 +915,7 @@ var adcCh2GainLSB = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -937,7 +938,7 @@ var adcCh3GainMSB = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -960,7 +961,7 @@ var adcCh3GainMID = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -983,7 +984,7 @@ var adcCh3GainLSB = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -1006,7 +1007,7 @@ var adcCh0SyncOffset = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -1029,7 +1030,7 @@ var adcCh1SyncOffset = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -1052,7 +1053,7 @@ var adcCh2SyncOffset = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -1075,7 +1076,7 @@ var adcCh3SyncOffset = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -1098,7 +1099,7 @@ var adcDiagnosticRX = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -1121,7 +1122,7 @@ var adcDiagnosticMuxControl = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -1144,7 +1145,7 @@ var adcDiagnosticDelayControl = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -1167,7 +1168,7 @@ var adcChopControl = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
@@ -1190,7 +1191,7 @@ var adcSoftReset = &cobra.Command{
 			return err
 		}
 
-		if debug, _ := adcCmd.PersistentFlags().GetBool("debug"); debug {
+		if debug, _ := adcCmd.Flags().GetBool("debug"); debug {
 			log.Println(tx, rx)
 		}
 		return err
