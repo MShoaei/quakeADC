@@ -48,7 +48,7 @@ func read(opt readOptions) error {
 	epoch := time.Now()
 	go func(ch chan<- []byte, d time.Duration) {
 		if opt.duration != 0 {
-			t := time.NewTimer(d * time.Second)
+			t := time.NewTimer(d * time.Millisecond)
 			for {
 				select {
 				case <-t.C:
