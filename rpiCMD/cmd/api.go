@@ -3,7 +3,9 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"path"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -15,6 +17,10 @@ import (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		log.Println(r.Header["Origin"][0])
+		return true
+	},
 }
 
 var readParams struct {
@@ -143,11 +149,12 @@ func readLiveHandler(ctx iris.Context) {
 	log.Println("readLiveHandler called")
 	conn, err := upgrader.Upgrade(ctx.ResponseWriter(), ctx.Request(), nil)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return
 	}
-	dataFile, err = os.OpenFile(readParams.File+".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	dataFile, err = os.OpenFile(path.Join("/", "tmp", readParams.File+".txt"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 		return
 	}
 	rcvToSend := make(chan string)
@@ -163,8 +170,6 @@ func readLiveHandler(ctx iris.Context) {
 		if !ok {
 			conn.WriteMessage(websocket.TextMessage, []byte("Send finished"))
 			conn.Close()
-			// ctx.Redirect("/getfile")
-			// ctx.ResetResponseWriter(ctx.ResponseWriter())
 			return
 		}
 		conn.WriteMessage(websocket.TextMessage, []byte(data))
@@ -175,11 +180,12 @@ func readLiveHandler(ctx iris.Context) {
 func readLivePostHandler(ctx iris.Context) {
 	log.Println("readLivePostHandler called")
 	ctx.ReadJSON(&readParams)
+	log.Println(readParams)
 	ctx.JSON(iris.Map{"code": 200})
 }
 
 func getFileHandler(ctx iris.Context) {
-	err := ctx.SendFile(dataFile.Name(), dataFile.Name())
+	err := ctx.SendFile(dataFile.Name(), path.Base(dataFile.Name()))
 	if err != nil {
 		log.Println(err)
 	}
