@@ -63,7 +63,13 @@ func NewAPI() *iris.Application {
 	api.Post("/command", commandHandler)
 	api.Get("/getfile", getFileHandler)
 
+	api.Patch("/update", updateStack)
+
 	return api
+}
+
+func updateStack(_ iris.Context) {
+	//TODO: How to self update?
 }
 
 func commandHandler(ctx iris.Context) {
