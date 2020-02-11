@@ -1,6 +1,6 @@
 FROM golang:1.13-alpine as builder
 WORKDIR /app
-RUN apk add --no-cache build-base libpcap-dev
+RUN apk add --no-cache g++ gcc libpcap-dev
 COPY go.* ./
 RUN go mod download
 COPY . .
