@@ -1730,7 +1730,7 @@ func (adc *Adc77684) Ch0GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 
 	h |= Ch0GainMid
 
-	s, err = flags.GetUint8("MSB")
+	s, err = flags.GetUint8("Mid")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1768,7 +1768,7 @@ func (adc *Adc77684) Ch0GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 
 	h |= Ch0GainLSB
 
-	s, err = flags.GetUint8("MSB")
+	s, err = flags.GetUint8("LSB")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1844,7 +1844,7 @@ func (adc *Adc77684) Ch1GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 
 	h |= Ch1GainMid
 
-	s, err = flags.GetUint8("MSB")
+	s, err = flags.GetUint8("Mid")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1882,7 +1882,7 @@ func (adc *Adc77684) Ch1GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 
 	h |= Ch1GainLSB
 
-	s, err = flags.GetUint8("MSB")
+	s, err = flags.GetUint8("LSB")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1958,7 +1958,7 @@ func (adc *Adc77684) Ch2GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 
 	h |= Ch2GainMid
 
-	s, err = flags.GetUint8("MSB")
+	s, err = flags.GetUint8("Mid")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1996,7 +1996,7 @@ func (adc *Adc77684) Ch2GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 
 	h |= Ch2GainLSB
 
-	s, err = flags.GetUint8("MSB")
+	s, err = flags.GetUint8("LSB")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -2072,7 +2072,7 @@ func (adc *Adc77684) Ch3GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 
 	h |= Ch3GainMid
 
-	s, err = flags.GetUint8("MSB")
+	s, err = flags.GetUint8("Mid")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -2110,7 +2110,7 @@ func (adc *Adc77684) Ch3GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 
 	h |= Ch3GainLSB
 
-	s, err = flags.GetUint8("MSB")
+	s, err = flags.GetUint8("LSB")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -2161,12 +2161,12 @@ func (adc *Adc77684) ChopControl(flags *flag.FlagSet) (tx []byte, rx []byte, err
 	return nil, nil, fmt.Errorf("not implemented")
 }
 
-func (adc *Adc77684) SoftReset(_ *flag.FlagSet) (_ []byte, _ []byte, err error) {
+func (adc *Adc77684) HardReset(_ *flag.FlagSet) (_ []byte, _ []byte, err error) {
 	r := raspi.NewAdaptor()
 	pin := gpio.NewDirectPinDriver(r, "22")
 
 	_ = pin.DigitalWrite(0)
-	time.Sleep(5 * time.Second)
+	time.Sleep(3 * time.Second)
 	_ = pin.DigitalWrite(1)
 	if err := pin.Halt(); err != nil {
 		log.Println(err)

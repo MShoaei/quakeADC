@@ -1175,8 +1175,8 @@ var adcChopControl = &cobra.Command{
 	},
 }
 
-var adcSoftReset = &cobra.Command{
-	Use:   "SoftReset",
+var adcHardReset = &cobra.Command{
+	Use:   "HardReset",
 	Short: "Perform hard reset",
 	Long:  `Hard reset is recommended before using the adc`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -1186,7 +1186,7 @@ var adcSoftReset = &cobra.Command{
 			rx  = make([]byte, 2)
 		)
 
-		tx, rx, err = adcConnection.SoftReset(cmd.Flags())
+		_, _, err = adcConnection.HardReset(cmd.Flags())
 		if err != nil {
 			return err
 		}
@@ -1211,7 +1211,7 @@ func init() {
 		adcCh2GainMSB, adcCh2GainMID, adcCh2GainLSB, adcCh3GainMSB, adcCh3GainMID, adcCh3GainLSB,
 		adcCh0SyncOffset, adcCh1SyncOffset, adcCh2SyncOffset, adcCh3SyncOffset,
 		adcDiagnosticRX, adcDiagnosticMuxControl, adcDiagnosticDelayControl, adcChopControl,
-		adcSoftReset)
+		adcHardReset)
 
 	// ------------------------
 

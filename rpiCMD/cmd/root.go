@@ -120,7 +120,7 @@ func initCommands() {
 		"DiagnosticMuxControl":    adcConnection.DiagnosticMuxControl,
 		"DiagnosticDelayControl":  adcConnection.DiagnosticDelayControl,
 		"ChopControl":             adcConnection.ChopControl,
-		"SoftReset":               adcConnection.SoftReset,
+		"HardReset":               adcConnection.HardReset,
 	}
 }
 
