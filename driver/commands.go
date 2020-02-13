@@ -99,6 +99,12 @@ func (adc *Adc77684) ChModeA(flags *flag.FlagSet) (tx []byte, rx []byte, err err
 	if ft < 0 || ft > 1 {
 		return nil, nil, fmt.Errorf("invalid filter type. expected 0 or 1, got %d", ft)
 	}
+	switch ft {
+	case 0:
+		l |= 0x0
+	case 1:
+		l |= 0x8
+	}
 
 	dr, err := flags.GetUint16("dec-rate")
 	if err != nil {
@@ -156,6 +162,12 @@ func (adc *Adc77684) ChModeB(flags *flag.FlagSet) (tx []byte, rx []byte, err err
 	}
 	if ft < 0 || ft > 1 {
 		return nil, nil, fmt.Errorf("invalid filter type. expected 0 or 1, got %d", ft)
+	}
+	switch ft {
+	case 0:
+		l |= 0x0
+	case 1:
+		l |= 0x8
 	}
 
 	dr, err := flags.GetUint16("dec-rate")
