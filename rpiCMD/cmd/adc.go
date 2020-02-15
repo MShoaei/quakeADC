@@ -1617,6 +1617,7 @@ func init() {
 	f.Uint8("ch2", 0, "0: Not in use, 1: Receive (default: 0)")
 	f.Uint8("ch1", 0, "0: Not in use, 1: Receive (default: 0)")
 	f.Uint8("ch0", 0, "0: Not in use, 1: Receive (default: 0)")
+	flagsList["DiagnosticRX"] = f
 
 	// ------------------------
 
@@ -1624,12 +1625,14 @@ func init() {
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("grpb-sel", 0, "0: Off, 3: Positive full-scale ADC check, 4: Negative full-scale ADC check, 5: Zero-scale ADC check")
 	f.Uint8("grpa-sel", 0, "0: Off, 3: Positive full-scale ADC check, 4: Negative full-scale ADC check, 5: Zero-scale ADC check")
+	flagsList["DiagnosticMuxControl"] = f
 
 	// ------------------------
 
 	f = adcDiagnosticDelayControl.Flags()
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("mod-delay", 0, "0: Disabled delayed clock for all channels, 1: Enable delayed clock for Channel 0 and Channel 1, 2: Enable delayed clock for Channel 2 and Channel 3, 3: Enable delayed clock for all channels")
+	flagsList["DiagnosticDelayControl"] = f
 
 	// ------------------------
 
@@ -1637,5 +1640,10 @@ func init() {
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("grpa-chop", 0, "1: Chop at f MOD /8, 2: Chop at f MOD /32")
 	f.Uint8("grpb-chop", 0, "1: Chop at f MOD /8, 2: Chop at f MOD /32")
+	flagsList["ChopControl"] = f
 
+	// ------------------------
+
+	f = adcHardReset.Flags()
+	flagsList["HardReset"] = f
 }
