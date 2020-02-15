@@ -2142,35 +2142,413 @@ func (adc *Adc77684) Ch3GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 }
 
 func (adc *Adc77684) Ch0SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	return nil, nil, fmt.Errorf("not implemented")
+	var (
+		h, l  uint8
+		s     uint8
+		write bool
+	)
+	tx = make([]byte, 2)
+	rx = make([]byte, 2)
+
+	write, err = flags.GetBool("write")
+	if err != nil {
+		return nil, nil, err
+	}
+	if !write {
+		h = h | 0x80
+	}
+
+	h |= Ch0SyncOffset
+
+	s, err = flags.GetUint8("offset")
+	if err != nil {
+		return nil, nil, err
+	}
+	l |= s
+
+	tx = []byte{h, l}
+	err = adc.Write(tx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
+	}
+
+	return tx, rx, err
 }
 
 func (adc *Adc77684) Ch1SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	return nil, nil, fmt.Errorf("not implemented")
+	var (
+		h, l  uint8
+		s     uint8
+		write bool
+	)
+	tx = make([]byte, 2)
+	rx = make([]byte, 2)
+
+	write, err = flags.GetBool("write")
+	if err != nil {
+		return nil, nil, err
+	}
+	if !write {
+		h = h | 0x80
+	}
+
+	h |= Ch1SyncOffset
+
+	s, err = flags.GetUint8("offset")
+	if err != nil {
+		return nil, nil, err
+	}
+	l |= s
+
+	tx = []byte{h, l}
+	err = adc.Write(tx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
+	}
+
+	return tx, rx, err
 }
 
 func (adc *Adc77684) Ch2SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	return nil, nil, fmt.Errorf("not implemented")
+	var (
+		h, l  uint8
+		s     uint8
+		write bool
+	)
+	tx = make([]byte, 2)
+	rx = make([]byte, 2)
+
+	write, err = flags.GetBool("write")
+	if err != nil {
+		return nil, nil, err
+	}
+	if !write {
+		h = h | 0x80
+	}
+
+	h |= Ch2SyncOffset
+
+	s, err = flags.GetUint8("offset")
+	if err != nil {
+		return nil, nil, err
+	}
+	l |= s
+
+	tx = []byte{h, l}
+	err = adc.Write(tx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
+	}
+
+	return tx, rx, err
 }
 
 func (adc *Adc77684) Ch3SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	return nil, nil, fmt.Errorf("not implemented")
+	var (
+		h, l  uint8
+		s     uint8
+		write bool
+	)
+	tx = make([]byte, 2)
+	rx = make([]byte, 2)
+
+	write, err = flags.GetBool("write")
+	if err != nil {
+		return nil, nil, err
+	}
+	if !write {
+		h = h | 0x80
+	}
+
+	h |= Ch3SyncOffset
+
+	s, err = flags.GetUint8("offset")
+	if err != nil {
+		return nil, nil, err
+	}
+	l |= s
+
+	tx = []byte{h, l}
+	err = adc.Write(tx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
+	}
+
+	return tx, rx, err
 }
 
 func (adc *Adc77684) DiagnosticRX(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	return nil, nil, fmt.Errorf("not implemented")
+	var (
+		h, l  uint8
+		s     uint8
+		write bool
+	)
+	tx = make([]byte, 2)
+	rx = make([]byte, 2)
+
+	write, err = flags.GetBool("write")
+	if err != nil {
+		return nil, nil, err
+	}
+	if !write {
+		h = h | 0x80
+	}
+
+	h |= DiagnosticRX
+
+	s, err = flags.GetUint8("ch3")
+	if err != nil {
+		return nil, nil, err
+	}
+	switch s {
+	case 0:
+		l |= 0x0
+	case 1:
+		l |= 0x20
+	default:
+		return nil, nil, fmt.Errorf("expected 0 or 1 for ch3, got %d", s)
+	}
+
+	s, err = flags.GetUint8("ch2")
+	if err != nil {
+		return nil, nil, err
+	}
+	switch s {
+	case 0:
+		l |= 0x0
+	case 1:
+		l |= 0x10
+	default:
+		return nil, nil, fmt.Errorf("expected 0 or 1 for ch2, got %d", s)
+	}
+
+	s, err = flags.GetUint8("ch1")
+	if err != nil {
+		return nil, nil, err
+	}
+	switch s {
+	case 0:
+		l |= 0x0
+	case 1:
+		l |= 0x02
+	default:
+		return nil, nil, fmt.Errorf("expected 0 or 1 for ch1, got %d", s)
+	}
+
+	s, err = flags.GetUint8("ch0")
+	if err != nil {
+		return nil, nil, err
+	}
+	switch s {
+	case 0:
+		l |= 0x0
+	case 1:
+		l |= 0x01
+	default:
+		return nil, nil, fmt.Errorf("expected 0 or 1 for ch3, got %d", s)
+	}
+
+	tx = []byte{h, l}
+	err = adc.Write(tx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
+	}
+
+	return tx, rx, err
 }
 
 func (adc *Adc77684) DiagnosticMuxControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	return nil, nil, fmt.Errorf("not implemented")
+	var (
+		h, l  uint8
+		s     uint8
+		write bool
+	)
+	tx = make([]byte, 2)
+	rx = make([]byte, 2)
+
+	write, err = flags.GetBool("write")
+	if err != nil {
+		return nil, nil, err
+	}
+	if !write {
+		h = h | 0x80
+	}
+
+	h |= DiagnosticMuxControl
+
+	s, err = flags.GetUint8("grpb-sel")
+	if err != nil {
+		return nil, nil, err
+	}
+	switch s {
+	case 0:
+		l |= 0x00
+	case 3:
+		l |= 0x30
+	case 4:
+		l |= 0x40
+	case 5:
+		l |= 0x50
+	default:
+		return nil, nil, fmt.Errorf("expected 0, 3, 4 or 5 for GRPB-SEL, got %d", s)
+	}
+
+	s, err = flags.GetUint8("grpa-sel")
+	if err != nil {
+		return nil, nil, err
+	}
+	switch s {
+	case 0:
+		l |= 0x00
+	case 3:
+		l |= 0x03
+	case 4:
+		l |= 0x04
+	case 5:
+		l |= 0x05
+	default:
+		return nil, nil, fmt.Errorf("expected 0, 3, 4 or 5 for GRPA-SEL, got %d", s)
+	}
+
+	tx = []byte{h, l}
+	err = adc.Write(tx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
+	}
+
+	return tx, rx, err
 }
 
 func (adc *Adc77684) DiagnosticDelayControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	return nil, nil, fmt.Errorf("not implemented")
+	var (
+		h, l  uint8
+		s     uint8
+		write bool
+	)
+	tx = make([]byte, 2)
+	rx = make([]byte, 2)
+
+	write, err = flags.GetBool("write")
+	if err != nil {
+		return nil, nil, err
+	}
+	if !write {
+		h = h | 0x80
+	}
+
+	h |= DiagnosticMuxControl
+	l = 0x2
+
+	s, err = flags.GetUint8("mod-delay")
+	if err != nil {
+		return nil, nil, err
+	}
+	switch s {
+	case 0:
+		l |= 0x00
+	case 1:
+		l |= 0x04
+	case 2:
+		l |= 0x08
+	case 3:
+		l |= 0x0c
+	default:
+		return nil, nil, fmt.Errorf("expected 0..3, for mod-delay, got %d", s)
+	}
+
+	tx = []byte{h, l}
+	err = adc.Write(tx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
+	}
+
+	return tx, rx, err
 }
 
 func (adc *Adc77684) ChopControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	return nil, nil, fmt.Errorf("not implemented")
+	var (
+		h, l  uint8
+		s     uint8
+		write bool
+	)
+	tx = make([]byte, 2)
+	rx = make([]byte, 2)
+
+	write, err = flags.GetBool("write")
+	if err != nil {
+		return nil, nil, err
+	}
+	if !write {
+		h = h | 0x80
+	}
+
+	h |= ChopControl
+
+	s, err = flags.GetUint8("grpa-sel")
+	if err != nil {
+		return nil, nil, err
+	}
+	switch s {
+	case 1:
+		l |= 0x04
+	case 2:
+		l |= 0x08
+	default:
+		return nil, nil, fmt.Errorf("expected 1 or 2 for GRPA-SEL, got %d", s)
+	}
+
+	s, err = flags.GetUint8("grpb-sel")
+	if err != nil {
+		return nil, nil, err
+	}
+	switch s {
+	case 1:
+		l |= 0x01
+	case 2:
+		l |= 0x02
+	default:
+		return nil, nil, fmt.Errorf("expected 1 or 2 for GRPB-SEL, got %d", s)
+	}
+
+	tx = []byte{h, l}
+	err = adc.Write(tx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
+	}
+
+	return tx, rx, err
 }
 
 func (adc *Adc77684) HardReset(_ *flag.FlagSet) (_ []byte, _ []byte, err error) {
