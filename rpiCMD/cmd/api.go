@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/iris-contrib/middleware/cors"
@@ -158,7 +157,7 @@ func readLiveHandler(ctx iris.Context) {
 		log.Println(err)
 		return
 	}
-	dataFile, err = os.OpenFile(path.Join("/", "tmp", readParams.File+".txt"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	dataFile, err = os.OpenFile(path.Join("/", "tmp", readParams.File+".txt"), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Println(err)
 		return
@@ -170,7 +169,6 @@ func readLiveHandler(ctx iris.Context) {
 		duration: readParams.Duration,
 		ch:       rcvToSend,
 	})
-	time.Sleep(1 * time.Second)
 	for {
 		data, ok := <-rcvToSend
 		if !ok {
@@ -179,7 +177,6 @@ func readLiveHandler(ctx iris.Context) {
 			return
 		}
 		conn.WriteMessage(websocket.TextMessage, []byte(data))
-		// time.Sleep(1 * time.Second)
 	}
 }
 
