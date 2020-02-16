@@ -331,7 +331,7 @@ func (adc *Adc77684) PowerMode(flags *flag.FlagSet) (tx []byte, rx []byte, err e
 
 	switch s {
 	case 0:
-		l |= 0x0
+		l |= 0x00
 	case 2:
 		l |= 0x02
 	case 3:
