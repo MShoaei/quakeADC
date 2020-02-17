@@ -41,7 +41,7 @@ func read(opt readOptions) error {
 	var skip *time.Ticker
 
 	ch := make(chan []byte, 1000000)
-	writer := bufio.NewWriterSize(opt.file, 10240)
+	writer := bufio.NewWriterSize(opt.file, 524288000) // 500 MB
 	interruptChan := make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt)
 	go func() {
