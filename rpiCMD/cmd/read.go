@@ -44,7 +44,7 @@ func read(opt readOptions) error {
 	interruptChan := make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt)
 	go func() {
-		for sig := range ch {
+		for sig := range interruptChan {
 			log.Println(sig)
 			err := writer.Flush()
 			if err != nil {
