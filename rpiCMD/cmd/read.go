@@ -48,7 +48,7 @@ func read(opt readOptions) error {
 			log.Println(sig)
 			err := writer.Flush()
 			if err != nil {
-				log.Println(err)
+				log.Println("interrupt and flush failed with error: ", err)
 			}
 			os.Exit(1)
 		}
@@ -67,7 +67,7 @@ func read(opt readOptions) error {
 			//close(opt.ch)
 			err := writer.Flush()
 			if err != nil {
-				log.Println(err)
+				log.Println("flush failed with error: ", err)
 			}
 			dataFile.Close()
 			return nil
@@ -75,7 +75,8 @@ func read(opt readOptions) error {
 
 		err := getPacketData(packet)
 		if err != nil {
-			log.Println(err)
+			log.Println("failed to read data from packet: ", err)
+			return err
 		}
 		writer.WriteString(defaultBuilder.String())
 		if skip != nil {
@@ -117,10 +118,10 @@ func getWithTicker(ch chan<- []byte, d time.Duration) {
 	if err != nil {
 		panic(err)
 	}
-	err = p.SetTimeout(d)
-	if err != nil {
-		panic(err)
-	}
+	//err = p.SetTimeout(d * time.Millisecond)
+	//if err != nil {
+	//	panic(err)
+	//}
 
 	handle, err := p.Activate()
 	if err != nil {

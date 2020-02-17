@@ -154,12 +154,12 @@ func readLiveHandler(ctx iris.Context) {
 	log.Println("readLiveHandler called")
 	conn, err := upgrader.Upgrade(ctx.ResponseWriter(), ctx.Request(), nil)
 	if err != nil {
-		log.Println(err)
+		log.Println("WebSocket creation error: ", err)
 		return
 	}
-	dataFile, err = os.OpenFile(path.Join("/", "tmp", readParams.File+".txt"), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+	dataFile, err = os.OpenFile(path.Join("/", "tmp", readParams.File+".txt"), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
-		log.Println(err)
+		log.Println("failed to open file: ", err)
 		return
 	}
 	rcvToSend := make(chan string)
@@ -170,6 +170,7 @@ func readLiveHandler(ctx iris.Context) {
 		ch:       rcvToSend,
 	})
 	for {
+		log.Println("started receiving data")
 		data, ok := <-rcvToSend
 		if !ok {
 			conn.WriteMessage(websocket.TextMessage, []byte("Send finished"))
@@ -190,7 +191,7 @@ func readLivePostHandler(ctx iris.Context) {
 func getFileHandler(ctx iris.Context) {
 	err := ctx.SendFile(dataFile.Name(), path.Base(dataFile.Name()))
 	if err != nil {
-		log.Println(err)
+		log.Println("sending file failed with error: ", err)
 	}
 	return
 }
