@@ -170,7 +170,6 @@ func readLiveHandler(ctx iris.Context) {
 		ch:       rcvToSend,
 	})
 	for {
-		log.Println("started receiving data")
 		data, ok := <-rcvToSend
 		if !ok {
 			conn.WriteMessage(websocket.TextMessage, []byte("Send finished"))
