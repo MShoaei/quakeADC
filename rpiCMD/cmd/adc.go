@@ -738,8 +738,8 @@ var adcCh0GainMSB = &cobra.Command{
 	},
 }
 
-var adcCh0GainMID = &cobra.Command{
-	Use:   "Ch0GainMID",
+var adcCh0GainMid = &cobra.Command{
+	Use:   "Ch0GainMid",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -807,8 +807,8 @@ var adcCh1GainMSB = &cobra.Command{
 	},
 }
 
-var adcCh1GainMID = &cobra.Command{
-	Use:   "Ch1GainMID",
+var adcCh1GainMid = &cobra.Command{
+	Use:   "Ch1GainMid",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -876,8 +876,8 @@ var adcCh2GainMSB = &cobra.Command{
 	},
 }
 
-var adcCh2GainMID = &cobra.Command{
-	Use:   "Ch2GainMID",
+var adcCh2GainMid = &cobra.Command{
+	Use:   "Ch2GainMid",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -945,8 +945,8 @@ var adcCh3GainMSB = &cobra.Command{
 	},
 }
 
-var adcCh3GainMID = &cobra.Command{
-	Use:   "Ch3GainMID",
+var adcCh3GainMid = &cobra.Command{
+	Use:   "Ch3GainMid",
 	Short: "",
 	Long:  "",
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -1207,8 +1207,8 @@ func init() {
 		adcPositiveRefPrechargeBuf, adcNegativeRefPrechargeBuf,
 		adcCh0OffsetMSB, adcCh0OffsetMid, adcCh0OffsetLSB, adcCh1OffsetMSB, adcCh1OffsetMid, adcCh1OffsetLSB,
 		adcCh2OffsetMSB, adcCh2OffsetMid, adcCh2OffsetLSB, adcCh3OffsetMSB, adcCh3OffsetMid, adcCh3OffsetLSB,
-		adcCh0GainMSB, adcCh0GainMID, adcCh0GainLSB, adcCh1GainMSB, adcCh1GainMID, adcCh1GainLSB,
-		adcCh2GainMSB, adcCh2GainMID, adcCh2GainLSB, adcCh3GainMSB, adcCh3GainMID, adcCh3GainLSB,
+		adcCh0GainMSB, adcCh0GainMid, adcCh0GainLSB, adcCh1GainMSB, adcCh1GainMid, adcCh1GainLSB,
+		adcCh2GainMSB, adcCh2GainMid, adcCh2GainLSB, adcCh3GainMSB, adcCh3GainMid, adcCh3GainLSB,
 		adcCh0SyncOffset, adcCh1SyncOffset, adcCh2SyncOffset, adcCh3SyncOffset,
 		adcDiagnosticRX, adcDiagnosticMuxControl, adcDiagnosticDelayControl, adcChopControl,
 		adcHardReset)
@@ -1491,11 +1491,11 @@ func init() {
 
 	// ------------------------
 
-	f = adcCh0GainMID.Flags()
+	f = adcCh0GainMid.Flags()
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("Mid", 0, "Channel 0 gain Mid signed 8 bit integer (default: 0)")
 	f.SortFlags = false
-	flagsList["Ch0GainMSB"] = f
+	flagsList["Ch0GainMid"] = f
 
 	// ------------------------
 
@@ -1503,7 +1503,7 @@ func init() {
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("LSB", 0, "Channel 0 gain LSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
-	flagsList["Ch0GainMSB"] = f
+	flagsList["Ch0GainLSB"] = f
 
 	// ------------------------
 
@@ -1515,11 +1515,11 @@ func init() {
 
 	// ------------------------
 
-	f = adcCh1GainMID.Flags()
+	f = adcCh1GainMid.Flags()
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("Mid", 0, "Channel 0 gain Mid signed 8 bit integer (default: 0)")
 	f.SortFlags = false
-	flagsList["Ch1GainMSB"] = f
+	flagsList["Ch1GainMid"] = f
 
 	// ------------------------
 
@@ -1527,7 +1527,7 @@ func init() {
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("LSB", 0, "Channel 0 gain LSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
-	flagsList["Ch1GainMSB"] = f
+	flagsList["Ch1GainLSB"] = f
 
 	// ------------------------
 
@@ -1539,11 +1539,11 @@ func init() {
 
 	// ------------------------
 
-	f = adcCh2GainMID.Flags()
+	f = adcCh2GainMid.Flags()
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("Mid", 0, "Channel 0 gain Mid signed 8 bit integer (default: 0)")
 	f.SortFlags = false
-	flagsList["Ch2GainMSB"] = f
+	flagsList["Ch2GainMid"] = f
 
 	// ------------------------
 
@@ -1551,7 +1551,7 @@ func init() {
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("LSB", 0, "Channel 0 gain LSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
-	flagsList["Ch2GainMSB"] = f
+	flagsList["Ch2GainLSB"] = f
 
 	// ------------------------
 
@@ -1563,11 +1563,11 @@ func init() {
 
 	// ------------------------
 
-	f = adcCh3GainMID.Flags()
+	f = adcCh3GainMid.Flags()
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("Mid", 0, "Channel 0 gain Mid signed 8 bit integer (default: 0)")
 	f.SortFlags = false
-	flagsList["Ch3GainMSB"] = f
+	flagsList["Ch3GainMid"] = f
 
 	// ------------------------
 
@@ -1575,7 +1575,7 @@ func init() {
 	f.Bool("write", false, "set the write bit")
 	f.Uint8("LSB", 0, "Channel 0 gain LSB signed 8 bit integer (default: 0)")
 	f.SortFlags = false
-	flagsList["Ch3GainMSB"] = f
+	flagsList["Ch3GainLSB"] = f
 
 	// ------------------------
 
