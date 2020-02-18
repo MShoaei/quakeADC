@@ -15,7 +15,7 @@ import (
 )
 
 var defaultBuilder = strings.Builder{}
-var defaultWriter *bufio.Writer
+var defaultWriter = bufio.NewWriterSize(nil, 524288000)
 
 type readOptions struct {
 	file     *os.File
@@ -42,7 +42,7 @@ func read(opt readOptions) error {
 	var skip *time.Ticker
 
 	ch := make(chan []byte, 1000000)
-	defaultWriter = bufio.NewWriterSize(opt.file, 524288000) // 500 MB
+	defaultWriter.Reset(opt.file)
 	interruptChan := make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt)
 	go func() {
