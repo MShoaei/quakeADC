@@ -39,7 +39,6 @@ var adcReadCmd = &cobra.Command{
 }
 
 func read(opt readOptions) error {
-	var skip *time.Ticker
 
 	ch := make(chan []byte, 1000000)
 	defaultWriter.Reset(opt.file)
@@ -56,9 +55,7 @@ func read(opt readOptions) error {
 		}
 	}()
 
-	if opt.ch != nil {
-		skip = time.NewTicker(time.Duration(opt.skip) * time.Millisecond)
-	}
+	counter := 0
 	go getPackets(ch, time.Duration(opt.duration))
 	for {
 		var packet []byte
@@ -81,15 +78,21 @@ func read(opt readOptions) error {
 			return err
 		}
 		defaultWriter.WriteString(defaultBuilder.String())
-		if skip != nil {
-			select {
-			case <-skip.C:
-				opt.ch <- defaultBuilder.String()
-				defaultBuilder.Reset()
-			default:
-				continue
-			}
+		if counter%opt.skip == 0 {
+			opt.ch <- defaultBuilder.String()
+			defaultBuilder.Reset()
+			counter = 0
 		}
+		counter++
+		//if skip != nil {
+		//	select {
+		//	case <-skip.C:
+		//		opt.ch <- defaultBuilder.String()
+		//		defaultBuilder.Reset()
+		//	default:
+		//		continue
+		//	}
+		//}
 	}
 }
 
