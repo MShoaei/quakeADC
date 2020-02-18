@@ -16,6 +16,7 @@ import (
 
 var defaultBuilder = strings.Builder{}
 var defaultWriter = bufio.NewWriterSize(nil, 524288000)
+var defaultChannel = make(chan []byte, 1000000)
 
 type readOptions struct {
 	file     *os.File
@@ -39,8 +40,6 @@ var adcReadCmd = &cobra.Command{
 }
 
 func read(opt readOptions) error {
-
-	ch := make(chan []byte, 1000000)
 	defaultWriter.Reset(opt.file)
 	interruptChan := make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt)
@@ -56,12 +55,12 @@ func read(opt readOptions) error {
 	}()
 
 	counter := 0
-	go getPackets(ch, time.Duration(opt.duration))
+	go getPackets(defaultChannel, time.Duration(opt.duration))
 	for {
 		var packet []byte
 		var ok bool
 
-		packet, ok = <-ch
+		packet, ok = <-defaultChannel
 		if !ok {
 			close(opt.ch)
 			err := defaultWriter.Flush()
@@ -140,11 +139,13 @@ func getWithTicker(ch chan<- []byte, d time.Duration) {
 		case <-t.C:
 			close(ch)
 			t.Stop()
+			handle.Close()
 			return
 		default:
 			packet, info, err := handle.ReadPacketData()
 			if err != nil {
-				panic(err)
+				log.Println("read packet data failed with error: ", err)
+				handle.Close()
 			}
 
 			// 8 byte time in milliseconds
