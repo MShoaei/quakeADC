@@ -15,6 +15,7 @@ import (
 )
 
 var defaultBuilder = strings.Builder{}
+var defaultWriter *bufio.Writer
 
 type readOptions struct {
 	file     *os.File
@@ -41,13 +42,13 @@ func read(opt readOptions) error {
 	var skip *time.Ticker
 
 	ch := make(chan []byte, 1000000)
-	writer := bufio.NewWriterSize(opt.file, 524288000) // 500 MB
+	defaultWriter = bufio.NewWriterSize(opt.file, 524288000) // 500 MB
 	interruptChan := make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt)
 	go func() {
 		for sig := range interruptChan {
 			log.Println(sig)
-			err := writer.Flush()
+			err := defaultWriter.Flush()
 			if err != nil {
 				log.Println("interrupt and flush failed with error: ", err)
 			}
@@ -66,7 +67,7 @@ func read(opt readOptions) error {
 		packet, ok = <-ch
 		if !ok {
 			close(opt.ch)
-			err := writer.Flush()
+			err := defaultWriter.Flush()
 			if err != nil {
 				log.Println("flush failed with error: ", err)
 			}
@@ -79,7 +80,7 @@ func read(opt readOptions) error {
 			log.Println("failed to read data from packet: ", err)
 			return err
 		}
-		writer.WriteString(defaultBuilder.String())
+		defaultWriter.WriteString(defaultBuilder.String())
 		if skip != nil {
 			select {
 			case <-skip.C:
