@@ -194,28 +194,28 @@ func getPacketData(packet []byte) error {
 	if int8(packet[24]) < 0 {
 		signCH0 = 255 << 24
 	}
-	str = strconv.FormatInt(int64(signCH0+(uint32(packet[24])<<16)+(uint32(packet[25])<<8)+(uint32(packet[26]))), 10)
+	str = strconv.FormatInt(int64(int32(signCH0+(uint32(packet[24])<<16)+(uint32(packet[25])<<8)+(uint32(packet[26])))), 10)
 	defaultBuilder.WriteString(str)
 	defaultBuilder.WriteString(",")
 
 	if int8(packet[28]) < 0 {
 		signCH1 = 255 << 24
 	}
-	str = strconv.FormatInt(int64(signCH1+(uint32(packet[28])<<16)+(uint32(packet[29])<<8)+(uint32(packet[30]))), 10)
+	str = strconv.FormatInt(int64(int32(signCH1+(uint32(packet[28])<<16)+(uint32(packet[29])<<8)+(uint32(packet[30])))), 10)
 	defaultBuilder.WriteString(str)
 	defaultBuilder.WriteString(",")
 
 	if int8(packet[32]) < 0 {
 		signCH2 = 255 << 24
 	}
-	str = strconv.FormatInt(int64(signCH2+(uint32(packet[32])<<16)+(uint32(packet[33])<<8)+(uint32(packet[34]))), 10)
+	str = strconv.FormatInt(int64(int32(signCH2+(uint32(packet[32])<<16)+(uint32(packet[33])<<8)+(uint32(packet[34])))), 10)
 	defaultBuilder.WriteString(str)
 	defaultBuilder.WriteString(",")
 
 	if int8(packet[36]) < 0 {
 		signCH3 = 255 << 24
 	}
-	str = strconv.FormatInt(int64(signCH3+(uint32(packet[36])<<16)+(uint32(packet[37])<<8)+(uint32(packet[38]))), 10)
+	str = strconv.FormatInt(int64(int32(signCH3+(uint32(packet[36])<<16)+(uint32(packet[37])<<8)+(uint32(packet[38])))), 10)
 	defaultBuilder.WriteString(str)
 	defaultBuilder.WriteString("\r\n")
 	return nil
