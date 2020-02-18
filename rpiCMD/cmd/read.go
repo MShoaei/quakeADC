@@ -65,7 +65,7 @@ func read(opt readOptions) error {
 
 		packet, ok = <-ch
 		if !ok {
-			//close(opt.ch)
+			close(opt.ch)
 			err := writer.Flush()
 			if err != nil {
 				log.Println("flush failed with error: ", err)
