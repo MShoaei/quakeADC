@@ -3,6 +3,8 @@ package cmd
 import (
 	"bufio"
 	"encoding/binary"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
@@ -41,6 +43,7 @@ var adcReadCmd = &cobra.Command{
 }
 
 func read(opt readOptions) error {
+	defer opt.file.Close()
 	ch := make(chan []byte, 1000000)
 
 	defaultWriter.Reset(opt.file)
@@ -70,7 +73,6 @@ func read(opt readOptions) error {
 			if err != nil {
 				log.Println("flush failed with error: ", err)
 			}
-			dataFile.Close()
 			return nil
 		}
 
@@ -79,22 +81,13 @@ func read(opt readOptions) error {
 			log.Println("failed to read data from packet: ", err)
 			return err
 		}
-		defaultWriter.WriteString(defaultBuilder.String())
+		_, _ = defaultWriter.WriteString(defaultBuilder.String())
 		if counter%opt.skip == 0 {
 			opt.ch <- defaultBuilder.String()
 			defaultBuilder.Reset()
 			counter = 0
 		}
 		counter++
-		//if skip != nil {
-		//	select {
-		//	case <-skip.C:
-		//		opt.ch <- defaultBuilder.String()
-		//		defaultBuilder.Reset()
-		//	default:
-		//		continue
-		//	}
-		//}
 	}
 }
 
@@ -228,8 +221,109 @@ func getPacketData(packet []byte) error {
 	return nil
 }
 
+var adcConvertCmd = &cobra.Command{
+	Use:   "convert",
+	Short: "Convert file created by sigrok-cli",
+	// Long:  "Start Reading from RPI_INTERFACE",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var err error
+		const (
+			drdyMask uint8 = 1 << iota
+			d0Mask
+			d1Mask
+			d2Mask
+			d3Mask
+		)
+		data := make([]uint32, 4)
+		//temp := make([]uint32, 4)
+		input, _ := cmd.Flags().GetString("input")
+		inFile, err := os.Open(input)
+		if err != nil {
+			log.Fatalf("could not open file: %v", err)
+		}
+
+		output, _ := cmd.Flags().GetString("output")
+		outFile, err := os.Create(output)
+		if err != nil {
+			log.Fatalf("create file failed: %v", err)
+		}
+		defaultWriter.Reset(outFile)
+
+		buf, err := ioutil.ReadAll(inFile)
+		if err != nil {
+			log.Fatalf("read failed: %v", err)
+		}
+		dclkChan := index(buf)
+		for i := range dclkChan {
+			if buf[i]&drdyMask == 0 {
+				continue
+			}
+			//fmt.Printf("%+0b,", buf[i])
+			//fmt.Printf("%+0b,", buf[i+7])
+			//fmt.Printf("%+0b,", buf[i+8])
+			//fmt.Printf("%+0b\n", buf[i+9])
+			for buf[i]&drdyMask > 0 {
+				for x := 0; x < 8; x++ {
+					i = <-dclkChan
+				}
+				i = <-dclkChan
+				data[0], data[1], data[2], data[3] = 0, 0, 0, 0
+				if buf[i]&d0Mask > 0 {
+					data[0] = 255 << 24
+				}
+				if buf[i]&d1Mask > 0 {
+					data[1] = 255 << 24
+				}
+				if buf[i]&d2Mask > 0 {
+					data[2] = 255 << 24
+				}
+				if buf[i]&d3Mask > 0 {
+					data[3] = 255 << 24
+				}
+				for counter := 23; counter >= 0; counter-- {
+					//fmt.Printf("%+0b", buf[i+j])
+					data[0] |= uint32(buf[i]&d0Mask) >> 1 << counter
+					data[1] |= uint32(buf[i]&d1Mask) >> 2 << counter
+					data[2] |= uint32(buf[i]&d2Mask) >> 3 << counter
+					data[3] |= uint32(buf[i]&d3Mask) >> 4 << counter
+					if counter > 0 {
+						i = <-dclkChan
+					}
+				}
+				//i += 31
+				defaultWriter.WriteString(fmt.Sprintf("%d,%d,%d,%d\n", int32(data[0]), int32(data[1]), int32(data[2]), data[3]))
+			}
+		}
+		defaultWriter.Flush()
+		return nil
+	},
+}
+
+func index(buf []byte) (dclkChan <-chan int) {
+	const dclkMask = 0x40
+	//const drdyMask = 0x01
+	dclk := make(chan int, 200)
+	go func() {
+		for i := 0; i < len(buf)-1; i++ {
+			if !((buf[i]&dclkMask > 0) && (buf[i+1]&dclkMask == 0)) {
+				continue
+			}
+			dclk <- i
+		}
+		close(dclk)
+	}()
+	return dclk
+}
+
 func init() {
 	rootCmd.AddCommand(adcReadCmd)
+
+	rootCmd.AddCommand(adcConvertCmd)
+	adcConvertCmd.Flags().String("input", "", "the file to read and convert")
+	_ = adcConvertCmd.MarkFlagRequired("input")
+	adcConvertCmd.Flags().String("output", "", "the file to write the result")
+	_ = adcConvertCmd.MarkFlagRequired("output")
+
 	defaultBuilder.Grow(256)
 	defaultBuilder.Reset()
 }
