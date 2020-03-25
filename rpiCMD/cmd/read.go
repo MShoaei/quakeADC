@@ -3,7 +3,7 @@ package cmd
 import (
 	"bufio"
 	"encoding/binary"
-	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -226,16 +226,6 @@ var adcConvertCmd = &cobra.Command{
 	Short: "Convert file created by sigrok-cli",
 	// Long:  "Start Reading from RPI_INTERFACE",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var err error
-		const (
-			drdyMask uint8 = 1 << iota
-			d0Mask
-			d1Mask
-			d2Mask
-			d3Mask
-		)
-		data := make([]uint32, 4)
-		//temp := make([]uint32, 4)
 		input, _ := cmd.Flags().GetString("input")
 		inFile, err := os.Open(input)
 		if err != nil {
@@ -248,64 +238,83 @@ var adcConvertCmd = &cobra.Command{
 			log.Fatalf("create file failed: %v", err)
 		}
 		defaultWriter.Reset(outFile)
+		defer defaultWriter.Flush()
 
-		buf, err := ioutil.ReadAll(inFile)
-		if err != nil {
-			log.Fatalf("read failed: %v", err)
+		return convert(inFile, defaultWriter)
+	},
+}
+
+func convert(inFile io.Reader, outFile io.StringWriter) (err error) {
+	const (
+		drdyMask uint8 = 1 << iota
+		d0Mask
+		d1Mask
+		d2Mask
+		d3Mask
+	)
+	data := make([]uint32, 4)
+
+	buf, err := ioutil.ReadAll(inFile)
+	if err != nil {
+		log.Fatalf("read failed: %v", err)
+	}
+
+	dclkChan := index(buf)
+	for i := range dclkChan {
+		if buf[i]&drdyMask == 0 {
+			continue
 		}
-		dclkChan := index(buf)
-		for i := range dclkChan {
-			if buf[i]&drdyMask == 0 {
-				continue
+		for buf[i]&drdyMask > 0 {
+			for x := 0; x < 8; x++ { //skip 8 bits of header
+				_ = <-dclkChan
 			}
-			//fmt.Printf("%+0b,", buf[i])
-			//fmt.Printf("%+0b,", buf[i+7])
-			//fmt.Printf("%+0b,", buf[i+8])
-			//fmt.Printf("%+0b\n", buf[i+9])
-			for buf[i]&drdyMask > 0 {
-				for x := 0; x < 8; x++ {
+			i = <-dclkChan // bit 23 of data
+			data[0], data[1], data[2], data[3] = 0, 0, 0, 0
+			if buf[i]&d0Mask > 0 {
+				data[0] = 255 << 24
+			}
+			if buf[i]&d1Mask > 0 {
+				data[1] = 255 << 24
+			}
+			if buf[i]&d2Mask > 0 {
+				data[2] = 255 << 24
+			}
+			if buf[i]&d3Mask > 0 {
+				data[3] = 255 << 24
+			}
+			for counter := 23; counter >= 0; counter-- {
+				data[0] |= uint32(buf[i]&d0Mask) >> 1 << counter
+				data[1] |= uint32(buf[i]&d1Mask) >> 2 << counter
+				data[2] |= uint32(buf[i]&d2Mask) >> 3 << counter
+				data[3] |= uint32(buf[i]&d3Mask) >> 4 << counter
+				if counter > 0 {
 					i = <-dclkChan
 				}
-				i = <-dclkChan
-				data[0], data[1], data[2], data[3] = 0, 0, 0, 0
-				if buf[i]&d0Mask > 0 {
-					data[0] = 255 << 24
-				}
-				if buf[i]&d1Mask > 0 {
-					data[1] = 255 << 24
-				}
-				if buf[i]&d2Mask > 0 {
-					data[2] = 255 << 24
-				}
-				if buf[i]&d3Mask > 0 {
-					data[3] = 255 << 24
-				}
-				for counter := 23; counter >= 0; counter-- {
-					//fmt.Printf("%+0b", buf[i+j])
-					data[0] |= uint32(buf[i]&d0Mask) >> 1 << counter
-					data[1] |= uint32(buf[i]&d1Mask) >> 2 << counter
-					data[2] |= uint32(buf[i]&d2Mask) >> 3 << counter
-					data[3] |= uint32(buf[i]&d3Mask) >> 4 << counter
-					if counter > 0 {
-						i = <-dclkChan
-					}
-				}
-				//i += 31
-				defaultWriter.WriteString(fmt.Sprintf("%d,%d,%d,%d\n", int32(data[0]), int32(data[1]), int32(data[2]), data[3]))
 			}
+
+			outFile.WriteString(
+				strconv.FormatInt(int64(int32(data[0])), 10) + "," +
+					strconv.FormatInt(int64(int32(data[1])), 10) + "," +
+					strconv.FormatInt(int64(int32(data[2])), 10) + "," +
+					strconv.FormatInt(int64(int32(data[3])), 10) + "\n")
 		}
-		defaultWriter.Flush()
-		return nil
-	},
+	}
+	return nil
 }
 
 func index(buf []byte) (dclkChan <-chan int) {
 	const dclkMask = 0x40
-	//const drdyMask = 0x01
 	dclk := make(chan int, 200)
 	go func() {
+		temp := [2]bool{
+			buf[0]&dclkMask > 0,
+			buf[1]&dclkMask == 0,
+		}
+		//_ = buf[len(buf)-1]
 		for i := 0; i < len(buf)-1; i++ {
-			if !((buf[i]&dclkMask > 0) && (buf[i+1]&dclkMask == 0)) {
+			temp[0] = !temp[1]
+			temp[1] = buf[i+1]&dclkMask == 0
+			if !(temp[0] && temp[1]) {
 				continue
 			}
 			dclk <- i
