@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -18,6 +19,8 @@ import (
 
 var defaultBuilder = strings.Builder{}
 var defaultWriter = bufio.NewWriterSize(nil, 524288000)
+
+// var debug
 
 //var defaultChannel = make(chan []byte, 1000000)
 
@@ -239,9 +242,28 @@ var adcConvertCmd = &cobra.Command{
 		}
 		defaultWriter.Reset(outFile)
 		defer defaultWriter.Flush()
+		if debug, _ := cmd.Flags().GetBool("debug"); debug {
+			return testConvert(inFile, outFile)
+		}
 
 		return convert(inFile, defaultWriter)
 	},
+}
+
+func testConvert(inFile io.Reader, out io.Writer) error {
+	fmt.Println("testing")
+	var (
+		n   int64
+		err error
+	)
+
+	n, err = io.CopyN(out, inFile, 100)
+	for n == 100 && err == nil {
+		n, err = io.CopyN(out, inFile, 100)
+		out.Write([]byte{0x1, 0x2})
+	}
+	// ioutil.ReadAll()
+	return err
 }
 
 func convert(inFile io.Reader, outFile io.StringWriter) (err error) {
@@ -336,3 +358,4 @@ func init() {
 	defaultBuilder.Grow(256)
 	defaultBuilder.Reset()
 }
+

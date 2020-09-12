@@ -1,16 +1,24 @@
 package cmd
 
 import (
+	"crypto/sha512"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path"
+	"regexp"
+	"strings"
+	"time"
 
+	"github.com/dgrijalva/jwt-go"
+	"github.com/go-cmd/cmd"
 	"github.com/gorilla/websocket"
 	"github.com/iris-contrib/middleware/cors"
+	jwtmiddleware "github.com/iris-contrib/middleware/jwt"
 	"github.com/kataras/iris/v12"
 	flag "github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 var upgrader = websocket.Upgrader{
@@ -35,6 +43,19 @@ var CommandsList map[string]func(*flag.FlagSet) ([]byte, []byte, error)
 
 var flagsList = map[string]*flag.FlagSet{}
 
+//secret is the default secret for signing tokens
+const secret = "g3%k2Qi2j8B*XZVLfhi#7UMjJQ$#anVH"
+
+type usbDevice struct {
+	Name       string      `json:"name"`
+	Label      string      `json:"label"`
+	Mountpoint string      `json:"mountpoint"`
+	Size       string      `json:"size"`
+	Children   []usbDevice `json:"children"`
+}
+
+var connectedUSB = map[int]usbDevice{}
+
 // NewAPI creates a new API which receives commands and executes them
 // the server should be started with:
 // $ rpiCMD server
@@ -51,6 +72,21 @@ func NewAPI() *iris.Application {
 	//	templates = "./templates"
 	//}
 	//api.RegisterView(iris.HTML("dist", ".html").Reload(true))
+	api.Options("/login", loginOptionsHandler)
+	api.Post("/login", loginPostHandler)
+
+	authMiddleware := jwtmiddleware.New(jwtmiddleware.Config{
+		ValidationKeyGetter: func(_ *jwt.Token) (interface{}, error) {
+			if os.Getenv("SECRET") != "" {
+				return []byte(os.Getenv("SECRET")), nil
+			}
+			return []byte(secret), nil
+		},
+
+		SigningMethod: jwt.SigningMethodHS512,
+	})
+
+	api.Use(authMiddleware.Serve)
 
 	api.Get("/", homeHandler)
 
@@ -63,6 +99,8 @@ func NewAPI() *iris.Application {
 	api.Get("/getfile", getFileHandler)
 
 	api.Patch("/update", updateStack)
+
+	api.Get("/usbs", getAllUSB)
 
 	return api
 }
@@ -200,3 +238,81 @@ func homeHandler(ctx iris.Context) {
 		"message": "Home api",
 	})
 }
+
+func loginOptionsHandler(ctx iris.Context) {
+	ctx.Header("Allow", "OPTIONS, POST")
+}
+
+func loginPostHandler(ctx iris.Context) {
+	s := sha512.New()
+	s.Write([]byte(ctx.FormValue("username")))
+
+	var t *jwt.Token
+	/*pass: @12348765@ */
+	if ctx.FormValue("username") == "admin" && string(s.Sum(nil)) == "2871d000b43b5c6220e2a0e210966f5f8ce7ebbbc198eb0da7069aea08f4659160316a7e98b1d8bc86b949c693d1b561eecc05d4e67499bf490c3e30bd207588" {
+		t = jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.StandardClaims{
+			Id:        "1",
+			ExpiresAt: time.Now().Add(8 * time.Hour).Unix(),
+		})
+		/*pass: randomuserpass*/
+	} else if ctx.FormValue("username") == "user" && string(s.Sum(nil)) == "9412a466356c0fb54f742f0e39ac07677c41d6fb814344baed544db4f98ab1e00b74110e6f91a5f88ded89a9c0d0b5a5e382d0af708c0f8cbcd7ab62cbc13156" {
+		t = jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.StandardClaims{
+			Id:        "2",
+			ExpiresAt: time.Now().Add(8 * time.Hour).Unix(),
+		})
+	} else {
+		ctx.StatusCode(iris.StatusUnauthorized)
+		ctx.JSON(iris.Map{"success": false, "error": "icorrect username and/or password"})
+		return
+	}
+
+	var token string
+	var err error
+	if os.Getenv("SECRET") != "" {
+		token, err = t.SignedString([]byte(os.Getenv("SECRET")))
+	} else {
+		token, err = t.SignedString([]byte(secret))
+	}
+
+	if err != nil {
+		log.Printf("fialed to sign token: %v", err)
+		ctx.StatusCode(iris.StatusInternalServerError)
+		ctx.JSON(iris.Map{"success": false})
+		return
+	}
+	ctx.StatusCode(iris.StatusOK)
+	ctx.JSON(iris.Map{"success": true, "token": token})
+}
+
+func getAllUSB(ctx iris.Context) {
+	var allDevices []usbDevice
+	status := <-cmd.NewCmd("lsblk", "-o", "NAME,LABEL,SIZE,MOUNTPOINT", "-J").Start()
+	str := strings.Builder{}
+	for _, s := range status.Stdout {
+		str.WriteString(s)
+	}
+
+	v := viper.New()
+
+	v.SetConfigType("json")
+	v.ReadConfig(strings.NewReader(str.String()))
+	if err := v.UnmarshalKey("blockdevices", &allDevices); err != nil {
+		log.Printf("unmarshal error: %v", err)
+	}
+
+	for i, dev := range allDevices {
+		for _, child := range dev.Children {
+			if match, _ := regexp.MatchString(`^/media.*`, child.Mountpoint); match {
+				connectedUSB[i] = child
+			}
+		}
+	}
+	ctx.JSON(iris.Map{
+		"devices": connectedUSB,
+	})
+}
+
+func init() {
+
+}
+
