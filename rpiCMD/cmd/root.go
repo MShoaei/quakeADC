@@ -162,6 +162,8 @@ func init() {
 	f.BoolP("skip", "S", false, "Skip initializing spi connection. ONLY FOR TEST")
 	c := f.Lookup("debug")
 	c.NoOptDefVal = "true"
+	c = f.Lookup("chip")
+	c.Hidden = true
 	f.SortFlags = false
 
 	// Here you will define your flags and configuration settings.
