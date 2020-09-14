@@ -1213,6 +1213,10 @@ func init() {
 		adcDiagnosticRX, adcDiagnosticMuxControl, adcDiagnosticDelayControl, adcChopControl,
 		adcHardReset)
 
+	f = adcCmd.PersistentFlags()
+	f.Uint8("adc", 0, "select the ADC to control: [1..9], 0: all")
+	adcCmd.MarkFlagRequired("adc")
+
 	// ------------------------
 
 	f = adcChStandby.Flags()
