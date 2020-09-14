@@ -1,7 +1,9 @@
 package driver
 
 import (
+	"fmt"
 	"gobot.io/x/gobot/drivers/spi"
+	"periph.io/x/periph/conn/gpio"
 )
 
 // ADC7768-4 Register Addresses
@@ -102,18 +104,39 @@ func GetSpiConnection(busNum, chipNum, mode, bits int, maxSpeed int64) (*Adc7768
 }
 
 // Transmit is used to send a new command and receive last commands response
-func (adc *Adc77684) Transmit(tx, rx []byte) error {
-	return adc.connection.Tx(tx, rx)
+func (adc *Adc77684) Transmit(tx, rx []byte, cs uint8) error {
+	if cs < 1 || cs > 9 {
+		return fmt.Errorf("invalid chip select %d", cs)
+	}
+	chipSelectPins[cs].FastOut(gpio.Low)
+	err := adc.connection.Tx(tx, rx)
+	chipSelectPins[cs].FastOut(gpio.High)
+
+	return err
 }
 
 // Write sends command and ignores previous commands response
-func (adc *Adc77684) Write(tx []byte) error {
-	return adc.connection.Tx(tx, nil)
+func (adc *Adc77684) Write(tx []byte, cs uint8) error {
+	if cs < 1 || cs > 9 {
+		return fmt.Errorf("invalid chip select %d", cs)
+	}
+	chipSelectPins[cs].FastOut(gpio.Low)
+	err := adc.connection.Tx(tx, nil)
+	chipSelectPins[cs].FastOut(gpio.High)
+
+	return err
 }
 
 // Read reads the response of previous command
-func (adc *Adc77684) Read(rx []byte) error {
-	return adc.connection.Tx(nil, rx)
+func (adc *Adc77684) Read(rx []byte, cs uint8) error {
+	if cs < 1 || cs > 9 {
+		return fmt.Errorf("invalid chip select %d", cs)
+	}
+	chipSelectPins[cs].FastOut(gpio.Low)
+	err := adc.connection.Tx(nil, rx)
+	chipSelectPins[cs].FastOut(gpio.High)
+
+	return err
 }
 
 // Close closes the connection and frees the resources

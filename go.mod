@@ -21,4 +21,5 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
 	gobot.io/x/gobot v1.14.0
+	periph.io/x/periph v3.6.2+incompatible
 )
