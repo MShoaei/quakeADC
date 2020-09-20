@@ -1,7 +1,11 @@
 package cmd
 
 import (
+	"fmt"
 	"log"
+
+	"periph.io/x/periph/conn/gpio"
+	"periph.io/x/periph/host/bcm283x"
 
 	"github.com/spf13/cobra"
 	flag "github.com/spf13/pflag"
@@ -11,12 +15,6 @@ import (
 var adcCmd = &cobra.Command{
 	Use:   "adc",
 	Short: "command to control the ADC over SPI",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
 }
 
 var adcChStandby = &cobra.Command{
@@ -1198,6 +1196,19 @@ var adcHardReset = &cobra.Command{
 	},
 }
 
+var adcSyncControl = &cobra.Command{
+	Use: "Sync",
+	Run: func(cmd *cobra.Command, args []string) {
+		switch args[0] {
+		case "0":
+			bcm283x.GPIO7.FastOut(gpio.Low)
+		case "1":
+			bcm283x.GPIO7.FastOut(gpio.High)
+		}
+		fmt.Println(bcm283x.GPIO7.FastRead())
+	},
+}
+
 func init() {
 	var f *flag.FlagSet
 	rootCmd.AddCommand(adcCmd)
@@ -1211,7 +1222,7 @@ func init() {
 		adcCh2GainMSB, adcCh2GainMid, adcCh2GainLSB, adcCh3GainMSB, adcCh3GainMid, adcCh3GainLSB,
 		adcCh0SyncOffset, adcCh1SyncOffset, adcCh2SyncOffset, adcCh3SyncOffset,
 		adcDiagnosticRX, adcDiagnosticMuxControl, adcDiagnosticDelayControl, adcChopControl,
-		adcHardReset)
+		adcHardReset, adcSyncControl)
 
 	f = adcCmd.PersistentFlags()
 	f.Uint8("adc", 0, "select the ADC to control: [1..9], 0: all")

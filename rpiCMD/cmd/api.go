@@ -189,33 +189,35 @@ func commandHandler(ctx iris.Context) {
 }
 
 func readLiveHandler(ctx iris.Context) {
-	log.Println("readLiveHandler called")
-	conn, err := upgrader.Upgrade(ctx.ResponseWriter(), ctx.Request(), nil)
-	if err != nil {
-		log.Println("WebSocket creation error: ", err)
-		return
-	}
-	dataFile, err = os.OpenFile(path.Join("/", "tmp", readParams.File+".txt"), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Println("failed to open file: ", err)
-		return
-	}
-	rcvToSend := make(chan string)
-	go read(readOptions{
-		file:     dataFile,
-		skip:     readParams.Skip,
-		duration: readParams.Duration,
-		ch:       rcvToSend,
-	})
-	for {
-		data, ok := <-rcvToSend
-		if !ok {
-			conn.WriteMessage(websocket.TextMessage, []byte("Send finished"))
-			conn.Close()
-			return
-		}
-		conn.WriteMessage(websocket.TextMessage, []byte(data))
-	}
+	log.Panicf("this is not Working")
+
+	//log.Println("readLiveHandler called")
+	//conn, err := upgrader.Upgrade(ctx.ResponseWriter(), ctx.Request(), nil)
+	//if err != nil {
+	//	log.Println("WebSocket creation error: ", err)
+	//	return
+	//}
+	//dataFile, err = os.OpenFile(path.Join("/", "tmp", readParams.File+".txt"), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0666)
+	//if err != nil {
+	//	log.Println("failed to open file: ", err)
+	//	return
+	//}
+	//rcvToSend := make(chan string)
+	//go read(readOptions{
+	//	file:     dataFile,
+	//	skip:     readParams.Skip,
+	//	duration: readParams.Duration,
+	//	ch:       rcvToSend,
+	//})
+	//for {
+	//	data, ok := <-rcvToSend
+	//	if !ok {
+	//		conn.WriteMessage(websocket.TextMessage, []byte("Send finished"))
+	//		conn.Close()
+	//		return
+	//	}
+	//	conn.WriteMessage(websocket.TextMessage, []byte(data))
+	//}
 }
 
 func readLivePostHandler(ctx iris.Context) {
@@ -315,4 +317,3 @@ func getAllUSB(ctx iris.Context) {
 func init() {
 
 }
-
