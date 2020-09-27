@@ -2,6 +2,7 @@ package driver
 
 import (
 	"fmt"
+
 	"gobot.io/x/gobot/drivers/spi"
 	"periph.io/x/periph/conn/gpio"
 )
