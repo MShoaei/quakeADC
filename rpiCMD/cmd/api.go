@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"regexp"
 	"strings"
 	"time"
 
@@ -49,7 +48,7 @@ const secret = "g3%k2Qi2j8B*XZVLfhi#7UMjJQ$#anVH"
 type usbDevice struct {
 	Name       string      `json:"name"`
 	Label      string      `json:"label"`
-	Mountpoint string      `json:"mountpoint"`
+	MountPoint string      `json:"mountpoint"`
 	Size       string      `json:"size"`
 	Children   []usbDevice `json:"children"`
 }
@@ -67,11 +66,6 @@ var connectedUSB = map[int]usbDevice{}
 //}
 func NewAPI() *iris.Application {
 	api := iris.Default()
-	//var templates string
-	//if templates = os.Getenv("TEMPLATES_DIR"); templates == "" {
-	//	templates = "./templates"
-	//}
-	//api.RegisterView(iris.HTML("dist", ".html").Reload(true))
 	api.Options("/login", loginOptionsHandler)
 	api.Post("/login", loginPostHandler)
 
@@ -100,7 +94,7 @@ func NewAPI() *iris.Application {
 
 	api.Patch("/update", updateStack)
 
-	api.Get("/usbs", getAllUSB)
+	api.Get("/usb/all", getAllUSB)
 
 	return api
 }
@@ -250,13 +244,15 @@ func loginPostHandler(ctx iris.Context) {
 	s.Write([]byte(ctx.FormValue("username")))
 
 	var t *jwt.Token
+
 	/*pass: @12348765@ */
 	if ctx.FormValue("username") == "admin" && string(s.Sum(nil)) == "2871d000b43b5c6220e2a0e210966f5f8ce7ebbbc198eb0da7069aea08f4659160316a7e98b1d8bc86b949c693d1b561eecc05d4e67499bf490c3e30bd207588" {
 		t = jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.StandardClaims{
 			Id:        "1",
 			ExpiresAt: time.Now().Add(8 * time.Hour).Unix(),
 		})
-		/*pass: randomuserpass*/
+
+	/*pass: randomuserpass*/
 	} else if ctx.FormValue("username") == "user" && string(s.Sum(nil)) == "9412a466356c0fb54f742f0e39ac07677c41d6fb814344baed544db4f98ab1e00b74110e6f91a5f88ded89a9c0d0b5a5e382d0af708c0f8cbcd7ab62cbc13156" {
 		t = jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.StandardClaims{
 			Id:        "2",
@@ -264,7 +260,7 @@ func loginPostHandler(ctx iris.Context) {
 		})
 	} else {
 		ctx.StatusCode(iris.StatusUnauthorized)
-		ctx.JSON(iris.Map{"success": false, "error": "icorrect username and/or password"})
+		ctx.JSON(iris.Map{"success": false, "error": "incorrect username and/or password"})
 		return
 	}
 
@@ -302,13 +298,14 @@ func getAllUSB(ctx iris.Context) {
 		log.Printf("unmarshal error: %v", err)
 	}
 
-	for i, dev := range allDevices {
-		for _, child := range dev.Children {
-			if match, _ := regexp.MatchString(`^/media.*`, child.Mountpoint); match {
-				connectedUSB[i] = child
-			}
-		}
-	}
+	//for i, dev := range allDevices {
+	//	for _, child := range dev.Children {
+	//		if match, _ := regexp.MatchString(`^/media.*`, child.MountPoint); match {
+	//			connectedUSB[i] = child
+	//		}
+	//	}
+	//}
+
 	ctx.JSON(iris.Map{
 		"devices": connectedUSB,
 	})
