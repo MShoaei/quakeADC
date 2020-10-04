@@ -9,10 +9,15 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
+
+type FlushWriter interface {
+	io.Writer
+	Flush() error
+}
 
 const (
 	logic1DataReadyMask uint8 = 0x80 >> iota
@@ -27,7 +32,6 @@ const (
 
 const second = 60
 
-var defaultBuilder = strings.Builder{}
 var inputPipe io.ReadCloser
 var buffer = make([]byte, second*24_000_000, second*24_000_000)
 
@@ -42,13 +46,9 @@ var adcConvertCmd = &cobra.Command{
 		)
 
 		input, _ := cmd.Flags().GetString("if")
-		if input == "" {
-			inputPipe = os.Stdin
-		} else {
-			inputPipe, err = os.Open(input)
-			if err != nil {
-				log.Fatalln(err)
-			}
+		inputPipe, err = os.Open(input)
+		if err != nil {
+			log.Fatalln(err)
 		}
 
 		output, _ := cmd.Flags().GetString("of")
@@ -93,6 +93,7 @@ var adcReadCmd = &cobra.Command{
 		if err := c.Start(); err != nil {
 			log.Fatalf("read command sigrok-cli start failed: %v", err)
 		}
+		time.Sleep(500 * time.Millisecond)
 		convert(w)
 		if err := c.Wait(); err != nil {
 			log.Fatal(err)
@@ -100,7 +101,7 @@ var adcReadCmd = &cobra.Command{
 	},
 }
 
-func convert(w *bufio.Writer) {
+func convert(w FlushWriter) {
 	defer w.Flush()
 	interruptChan := make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt)
@@ -220,13 +221,17 @@ func dataReadyIndex() (drdyChan <-chan int) {
 				if !(tempDataReady[0] && tempDataReady[1]) {
 					continue
 				}
+				//for n+nn<min && i+100 < n+nn {
+				//	nn, err = inputPipe.Read(buffer[n:])
+				//}
 				counter++
 				drdy <- i
 			}
 			n += nn
 		}
 		if err != nil {
-			log.Fatal(err)
+			//log.Fatal(err)
+			log.Println(err)
 		}
 		close(drdy)
 		fmt.Printf("%d\n", counter)
@@ -238,11 +243,9 @@ func init() {
 	rootCmd.AddCommand(adcConvertCmd, adcReadCmd)
 
 	adcConvertCmd.Flags().String("if", "", "the file to read and convert")
+	_ = adcConvertCmd.MarkFlagRequired("if")
 	adcConvertCmd.Flags().String("of", "", "the file to write the result")
 
 	adcReadCmd.Flags().String("if", "", "the file to read and convert")
 	adcReadCmd.Flags().String("of", "", "the file to write the result")
-
-	defaultBuilder.Grow(256)
-	defaultBuilder.Reset()
 }

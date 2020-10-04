@@ -3,6 +3,7 @@ package cmd
 import (
 	"crypto/sha512"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -80,14 +81,16 @@ func NewAPI() *iris.Application {
 		SigningMethod: jwt.SigningMethodHS512,
 	})
 
-	api.Use(authMiddleware.Serve)
+	api.Use(cors.AllowAll())
 
 	api.Get("/", homeHandler)
 
 	api.Get("/readlive", readLiveHandler)
 	api.Post("/readlive", readLivePostHandler)
 	// api.Any("/readlive", readLiveHandler)
-	api.Use(cors.AllowAll())
+
+	api.Use(authMiddleware.Serve)
+
 	api.Options("/command", homeHandler)
 	api.Post("/command", commandHandler)
 	api.Get("/getfile", getFileHandler)
@@ -128,7 +131,6 @@ func commandHandler(ctx iris.Context) {
 		ctx.StatusCode(iris.StatusNotImplemented)
 		ctx.JSON(iris.Map{
 			"message": "Unknown command",
-			"command": data.Command,
 			//"error":   err.Error(),
 		})
 		log.Printf("unknown command: %s", data.Command)
@@ -140,7 +142,6 @@ func commandHandler(ctx iris.Context) {
 		ctx.StatusCode(iris.StatusNotImplemented)
 		ctx.JSON(iris.Map{
 			"message": "flag set not found",
-			"command": data.Command,
 			//"error":   err.Error(),
 		})
 		log.Printf("unknown command: %s", data.Command)
@@ -183,14 +184,19 @@ func commandHandler(ctx iris.Context) {
 }
 
 func readLiveHandler(ctx iris.Context) {
-	log.Panicf("this is not Working")
-
-	//log.Println("readLiveHandler called")
-	//conn, err := upgrader.Upgrade(ctx.ResponseWriter(), ctx.Request(), nil)
-	//if err != nil {
-	//	log.Println("WebSocket creation error: ", err)
-	//	return
-	//}
+	log.Println("readLiveHandler called")
+	conn, err := upgrader.Upgrade(ctx.ResponseWriter(), ctx.Request(), nil)
+	if err != nil {
+		log.Println("WebSocket creation error: ", err)
+		return
+	}
+	f, _ := os.Open("direct.bin")
+	b, _ := ioutil.ReadAll(f)
+	// w, _ := conn.NextWriter(websocket.BinaryMessage)
+	for i := 0; i < len(b); i += 100 {
+		conn.WriteMessage(websocket.BinaryMessage, b[i:i+100])
+	}
+	conn.Close()
 	//dataFile, err = os.OpenFile(path.Join("/", "tmp", readParams.File+".txt"), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0666)
 	//if err != nil {
 	//	log.Println("failed to open file: ", err)
@@ -230,6 +236,7 @@ func getFileHandler(ctx iris.Context) {
 }
 
 func homeHandler(ctx iris.Context) {
+	ctx.StatusCode(iris.StatusOK)
 	ctx.JSON(iris.Map{
 		"message": "Home api",
 	})
@@ -252,7 +259,7 @@ func loginPostHandler(ctx iris.Context) {
 			ExpiresAt: time.Now().Add(8 * time.Hour).Unix(),
 		})
 
-	/*pass: randomuserpass*/
+		/*pass: randomuserpass*/
 	} else if ctx.FormValue("username") == "user" && string(s.Sum(nil)) == "9412a466356c0fb54f742f0e39ac07677c41d6fb814344baed544db4f98ab1e00b74110e6f91a5f88ded89a9c0d0b5a5e382d0af708c0f8cbcd7ab62cbc13156" {
 		t = jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.StandardClaims{
 			Id:        "2",
