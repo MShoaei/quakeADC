@@ -193,10 +193,13 @@ func readLiveHandler(ctx iris.Context) {
 	f, _ := os.Open("direct.bin")
 	b, _ := ioutil.ReadAll(f)
 	// w, _ := conn.NextWriter(websocket.BinaryMessage)
-	for i := 0; i < len(b); i += 100 {
-		conn.WriteMessage(websocket.BinaryMessage, b[i:i+100])
+	now := time.Now()
+	for i := 0; i < len(b); i += 80 {
+		conn.WriteMessage(websocket.BinaryMessage, b[i:i+80])
+		//time.Sleep(100*time.Millisecond)
 	}
 	conn.Close()
+	fmt.Println(time.Since(now))
 	//dataFile, err = os.OpenFile(path.Join("/", "tmp", readParams.File+".txt"), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0666)
 	//if err != nil {
 	//	log.Println("failed to open file: ", err)
