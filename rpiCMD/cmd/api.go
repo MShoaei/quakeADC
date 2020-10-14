@@ -128,6 +128,14 @@ func setupHandler(ctx iris.Context) {
 		return
 	}
 
+
+	if setupData.FileName == "" || setupData.ProjectName == "" {
+		ctx.StatusCode(iris.StatusBadRequest)
+		ctx.JSON(iris.Map{
+			"error": "invalid file name or project name",
+		})
+		return
+	}
 	//TODO: this should be changed to allow sub-projects.
 	if strings.Contains(setupData.ProjectName, "/") || strings.Contains(setupData.FileName, "/") {
 		ctx.StatusCode(iris.StatusBadRequest)
