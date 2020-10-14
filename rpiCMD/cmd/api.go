@@ -108,7 +108,7 @@ func NewAPI() *iris.Application {
 func setupHandler(ctx iris.Context) {
 	if sigrokRunning {
 		ctx.StatusCode(iris.StatusServiceUnavailable)
-		ctx.JSON(iris.Map{
+		_, _ = ctx.JSON(iris.Map{
 			"error": "sampling is already running",
 		})
 		return
@@ -122,16 +122,15 @@ func setupHandler(ctx iris.Context) {
 	}{}
 	if err := ctx.ReadJSON(&setupData); err != nil {
 		ctx.StatusCode(iris.StatusBadRequest)
-		ctx.JSON(iris.Map{
+		_, _ = ctx.JSON(iris.Map{
 			"error": err,
 		})
 		return
 	}
 
-
 	if setupData.FileName == "" || setupData.ProjectName == "" {
 		ctx.StatusCode(iris.StatusBadRequest)
-		ctx.JSON(iris.Map{
+		_, _ = ctx.JSON(iris.Map{
 			"error": "invalid file name or project name",
 		})
 		return
@@ -139,7 +138,7 @@ func setupHandler(ctx iris.Context) {
 	//TODO: this should be changed to allow sub-projects.
 	if strings.Contains(setupData.ProjectName, "/") || strings.Contains(setupData.FileName, "/") {
 		ctx.StatusCode(iris.StatusBadRequest)
-		ctx.JSON(iris.Map{
+		_, _ = ctx.JSON(iris.Map{
 			"error": "invalid file name or project name",
 		})
 		return
@@ -148,7 +147,7 @@ func setupHandler(ctx iris.Context) {
 	wd, _ := os.Getwd()
 	if err := os.MkdirAll(filepath.Join(wd, setupData.ProjectName), os.ModeDir|0755); err != nil {
 		ctx.StatusCode(iris.StatusBadRequest)
-		ctx.JSON(iris.Map{
+		_, _ = ctx.JSON(iris.Map{
 			"error": err,
 		})
 		return
@@ -157,7 +156,7 @@ func setupHandler(ctx iris.Context) {
 	_, err := os.Stat(filepath.Join(wd, setupData.ProjectName, setupData.FileName+".bin"))
 	if !os.IsNotExist(err) {
 		ctx.StatusCode(iris.StatusBadRequest)
-		ctx.JSON(iris.Map{
+		_, _ = ctx.JSON(iris.Map{
 			"error": "file already exists",
 		})
 		return
@@ -184,7 +183,7 @@ func commandHandler(ctx iris.Context) {
 	err := ctx.ReadJSON(data)
 	if err != nil {
 		ctx.StatusCode(iris.StatusBadRequest)
-		ctx.JSON(iris.Map{
+		_, _ = ctx.JSON(iris.Map{
 			"message": "failed with error",
 			//"error":   err.Error(),
 		})
@@ -192,10 +191,10 @@ func commandHandler(ctx iris.Context) {
 		return
 	}
 
-	cmd := CommandsList[data.Command]
-	if cmd == nil {
+	command := CommandsList[data.Command]
+	if command == nil {
 		ctx.StatusCode(iris.StatusNotImplemented)
-		ctx.JSON(iris.Map{
+		_, _ = ctx.JSON(iris.Map{
 			"message": "Unknown command",
 			//"error":   err.Error(),
 		})
@@ -206,7 +205,7 @@ func commandHandler(ctx iris.Context) {
 	set := flagsList[data.Command]
 	if set == nil { // should never happen!
 		ctx.StatusCode(iris.StatusNotImplemented)
-		ctx.JSON(iris.Map{
+		_, _ = ctx.JSON(iris.Map{
 			"message": "flag set not found",
 			//"error":   err.Error(),
 		})
@@ -221,7 +220,7 @@ func commandHandler(ctx iris.Context) {
 	err = set.Parse(flags)
 	if err != nil {
 		ctx.StatusCode(iris.StatusInternalServerError)
-		ctx.JSON(iris.Map{
+		_, _ = ctx.JSON(iris.Map{
 			"message": "failed with error",
 			//"error":   err.Error(),
 		})
@@ -229,10 +228,10 @@ func commandHandler(ctx iris.Context) {
 		return
 	}
 
-	tx, rx, err := cmd(set)
+	tx, rx, err := command(set)
 	if err != nil {
 		ctx.StatusCode(iris.StatusNotAcceptable)
-		ctx.JSON(iris.Map{
+		_, _ = ctx.JSON(iris.Map{
 			"message": "failed with error",
 			//"error":   err.Error(),
 		})
@@ -242,7 +241,7 @@ func commandHandler(ctx iris.Context) {
 
 	ctx.StatusCode(iris.StatusOK)
 	log.Printf("tx: %v, rx: %v", tx, rx)
-	ctx.JSON(iris.Map{
+	_, _ = ctx.JSON(iris.Map{
 		"message": "success",
 		"tx":      fmt.Sprintf("%v", tx),
 		"rx":      fmt.Sprintf("%v", rx),
@@ -262,11 +261,11 @@ func readLiveHandler(ctx iris.Context) {
 	// w, _ := conn.NextWriter(websocket.BinaryMessage)
 	now := time.Now()
 	for i := 0; i < len(b); i += 80 {
-		conn.WriteMessage(websocket.BinaryMessage, b[i:i+80])
+		_ = conn.WriteMessage(websocket.BinaryMessage, b[i:i+80])
 		//time.Sleep(100*time.Millisecond)
 	}
 	time.Sleep(1 * time.Second)
-	conn.Close()
+	_ = conn.Close()
 	fmt.Println(time.Since(now), len(b)/80)
 	//dataFile, err = os.OpenFile(path.Join("/", "tmp", readParams.File+".txt"), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0666)
 	//if err != nil {
@@ -294,9 +293,9 @@ func readLiveHandler(ctx iris.Context) {
 func readLivePostHandler(ctx iris.Context) {
 	info, _ := os.Stat("direct.bin")
 	log.Println("readLivePostHandler called")
-	ctx.ReadJSON(&readParams)
+	_ = ctx.ReadJSON(&readParams)
 	log.Println(readParams, info.Size()/80)
-	ctx.JSON(iris.Map{
+	_, _ = ctx.JSON(iris.Map{
 		"code": 200,
 		"size": info.Size() / 80,
 	})
@@ -312,7 +311,7 @@ func getFileHandler(ctx iris.Context) {
 
 func homeHandler(ctx iris.Context) {
 	ctx.StatusCode(iris.StatusOK)
-	ctx.JSON(iris.Map{
+	_, _ = ctx.JSON(iris.Map{
 		"message": "Home api",
 	})
 }
@@ -342,7 +341,7 @@ func loginPostHandler(ctx iris.Context) {
 		})
 	} else {
 		ctx.StatusCode(iris.StatusUnauthorized)
-		ctx.JSON(iris.Map{"success": false, "error": "incorrect username and/or password"})
+		_, _ = ctx.JSON(iris.Map{"success": false, "error": "incorrect username and/or password"})
 		return
 	}
 
@@ -357,11 +356,11 @@ func loginPostHandler(ctx iris.Context) {
 	if err != nil {
 		log.Printf("fialed to sign token: %v", err)
 		ctx.StatusCode(iris.StatusInternalServerError)
-		ctx.JSON(iris.Map{"success": false})
+		_, _ = ctx.JSON(iris.Map{"success": false})
 		return
 	}
 	ctx.StatusCode(iris.StatusOK)
-	ctx.JSON(iris.Map{"success": true, "token": token})
+	_, _ = ctx.JSON(iris.Map{"success": true, "token": token})
 }
 
 func getAllUSB(ctx iris.Context) {
@@ -375,7 +374,7 @@ func getAllUSB(ctx iris.Context) {
 	v := viper.New()
 
 	v.SetConfigType("json")
-	v.ReadConfig(strings.NewReader(str.String()))
+	_ = v.ReadConfig(strings.NewReader(str.String()))
 	if err := v.UnmarshalKey("blockdevices", &allDevices); err != nil {
 		log.Printf("unmarshal error: %v", err)
 	}
@@ -388,7 +387,7 @@ func getAllUSB(ctx iris.Context) {
 	//	}
 	//}
 
-	ctx.JSON(iris.Map{
+	_, _ = ctx.JSON(iris.Map{
 		"devices": connectedUSB,
 	})
 }
