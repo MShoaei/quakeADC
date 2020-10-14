@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -36,6 +37,7 @@ var readParams struct {
 	Duration int    `json:"duration"`
 }
 
+var sigrokRunning = false
 var dataFile *os.File
 
 // CommandsList is the list of all available commands
@@ -89,8 +91,7 @@ func NewAPI() *iris.Application {
 	api.Post("/readlive", readLivePostHandler)
 	// api.Any("/readlive", readLiveHandler)
 
-	api.Use(authMiddleware.Serve)
-
+	api.Post("/setup", setupHandler)
 	api.Options("/command", homeHandler)
 	api.Post("/command", commandHandler)
 	api.Get("/getfile", getFileHandler)
@@ -99,7 +100,64 @@ func NewAPI() *iris.Application {
 
 	api.Get("/usb/all", getAllUSB)
 
+	api.Use(authMiddleware.Serve)
+
 	return api
+}
+
+func setupHandler(ctx iris.Context) {
+	if sigrokRunning {
+		ctx.StatusCode(iris.StatusServiceUnavailable)
+		ctx.JSON(iris.Map{
+			"error": "sampling is already running",
+		})
+		return
+	}
+	setupData := struct {
+		StartMode    string `json:"startMode"`
+		RecordTime   int    `json:"recordTime"`
+		SamplingTime int    `json:"samplingTime"`
+		FileName     string `json:"fileName"`
+		ProjectName  string `json:"projectName"`
+	}{}
+	if err := ctx.ReadJSON(&setupData); err != nil {
+		ctx.StatusCode(iris.StatusBadRequest)
+		ctx.JSON(iris.Map{
+			"error": err,
+		})
+		return
+	}
+
+	//TODO: this should be changed to allow sub-projects.
+	if strings.Contains(setupData.ProjectName, "/") || strings.Contains(setupData.FileName, "/") {
+		ctx.StatusCode(iris.StatusBadRequest)
+		ctx.JSON(iris.Map{
+			"error": "invalid file name or project name",
+		})
+		return
+	}
+
+	wd, _ := os.Getwd()
+	if err := os.MkdirAll(filepath.Join(wd, setupData.ProjectName), os.ModeDir|0755); err != nil {
+		ctx.StatusCode(iris.StatusBadRequest)
+		ctx.JSON(iris.Map{
+			"error": err,
+		})
+		return
+	}
+
+	_, err := os.Stat(filepath.Join(wd, setupData.ProjectName, setupData.FileName+".bin"))
+	if !os.IsNotExist(err) {
+		ctx.StatusCode(iris.StatusBadRequest)
+		ctx.JSON(iris.Map{
+			"error": "file already exists",
+		})
+		return
+	}
+	dataFile, _ = os.Create(filepath.Join(wd, setupData.ProjectName, setupData.FileName+".bin"))
+	execSigrokCLI(setupData.RecordTime)
+
+	ctx.StatusCode(iris.StatusOK)
 }
 
 func updateStack(_ iris.Context) {
@@ -192,14 +250,16 @@ func readLiveHandler(ctx iris.Context) {
 	}
 	f, _ := os.Open("direct.bin")
 	b, _ := ioutil.ReadAll(f)
+
 	// w, _ := conn.NextWriter(websocket.BinaryMessage)
 	now := time.Now()
 	for i := 0; i < len(b); i += 80 {
 		conn.WriteMessage(websocket.BinaryMessage, b[i:i+80])
 		//time.Sleep(100*time.Millisecond)
 	}
+	time.Sleep(1 * time.Second)
 	conn.Close()
-	fmt.Println(time.Since(now))
+	fmt.Println(time.Since(now), len(b)/80)
 	//dataFile, err = os.OpenFile(path.Join("/", "tmp", readParams.File+".txt"), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0666)
 	//if err != nil {
 	//	log.Println("failed to open file: ", err)
@@ -224,10 +284,14 @@ func readLiveHandler(ctx iris.Context) {
 }
 
 func readLivePostHandler(ctx iris.Context) {
+	info, _ := os.Stat("direct.bin")
 	log.Println("readLivePostHandler called")
 	ctx.ReadJSON(&readParams)
-	log.Println(readParams)
-	ctx.JSON(iris.Map{"code": 200})
+	log.Println(readParams, info.Size()/80)
+	ctx.JSON(iris.Map{
+		"code": 200,
+		"size": info.Size() / 80,
+	})
 }
 
 func getFileHandler(ctx iris.Context) {
@@ -319,8 +383,4 @@ func getAllUSB(ctx iris.Context) {
 	ctx.JSON(iris.Map{
 		"devices": connectedUSB,
 	})
-}
-
-func init() {
-
 }

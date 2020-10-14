@@ -30,10 +30,33 @@ const (
 	logic1DataOut5Mask
 )
 
-const second = 60
-
 var inputPipe io.ReadCloser
-var buffer = make([]byte, second*24_000_000, second*24_000_000)
+var buffer []byte
+
+// execSigrokCLI starts sampling for duration milliseconds
+func execSigrokCLI(duration int) {
+	sigrokRunning = true
+	defer func() { sigrokRunning = false }()
+	buffer = make([]byte, duration*24_000, duration*24_000)
+	w := bufio.NewWriterSize(dataFile, duration*1024*1024)
+	c := exec.Command(
+		"sigrok-cli",
+		"--driver=fx2lafw", "-O", "binary", "--time", fmt.Sprintf("%d", duration), "--config", "samplerate=24m")
+
+	var err error
+	inputPipe, err = c.StdoutPipe()
+	if err != nil {
+		log.Panic(err)
+	}
+	if err := c.Start(); err != nil {
+		log.Panicf("read command sigrok-cli start failed: %v", err)
+	}
+	time.Sleep(500 * time.Millisecond)
+	convert(w)
+	if err := c.Wait(); err != nil {
+		log.Panic(err)
+	}
+}
 
 // adcConvertCmd represents the convert command
 var adcConvertCmd = &cobra.Command{
@@ -69,6 +92,7 @@ var adcReadCmd = &cobra.Command{
 	Use:   "read",
 	Short: "read data from logic analyzer and write to 'of'",
 	Run: func(cmd *cobra.Command, args []string) {
+		const second int = 10
 		w := bufio.NewWriterSize(nil, second*1024*1024)
 		output, _ := cmd.Flags().GetString("of")
 		if output == "" {
@@ -90,6 +114,7 @@ var adcReadCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		if err := c.Start(); err != nil {
 			log.Fatalf("read command sigrok-cli start failed: %v", err)
 		}
@@ -205,7 +230,7 @@ func dataReadyIndex() (drdyChan <-chan int) {
 		var (
 			err error
 			n   = 0
-			min = second * 24_000_000
+			min = len(buffer)
 		)
 		tempDataReady := []bool{
 			buffer[0]&logic1DataReadyMask > 0,
