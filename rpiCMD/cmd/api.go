@@ -162,7 +162,13 @@ func setupHandler(ctx iris.Context) {
 		return
 	}
 	dataFile, _ = os.Create(filepath.Join(wd, setupData.ProjectName, setupData.FileName+".bin"))
-	execSigrokCLI(setupData.RecordTime)
+	if err := execSigrokCLI(setupData.RecordTime); err != nil {
+		ctx.StatusCode(iris.StatusInternalServerError)
+		_, _ = ctx.JSON(iris.Map{
+			"error": err,
+		})
+		return
+	}
 
 	ctx.StatusCode(iris.StatusOK)
 }

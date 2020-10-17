@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -30,21 +32,21 @@ const (
 	logic1DataOut5Mask
 )
 
-var inputPipe io.ReadCloser
+var input io.ReadCloser
 var buffer []byte
 
-// execSigrokCLI starts sampling for duration milliseconds
-func execSigrokCLI(duration int) {
+// execSigrokCLILive starts sampling for duration milliseconds
+func execSigrokCLILive(duration int) {
 	sigrokRunning = true
 	defer func() { sigrokRunning = false }()
 	buffer = make([]byte, duration*24_000, duration*24_000)
-	w := bufio.NewWriterSize(dataFile, duration*1024*1024)
+	w := bufio.NewWriterSize(dataFile, int(math.Ceil(float64(duration)/1000.0))*1024*1024)
 	c := exec.Command(
 		"sigrok-cli",
 		"--driver=fx2lafw", "-O", "binary", "--time", fmt.Sprintf("%d", duration), "--config", "samplerate=24m")
 
 	var err error
-	inputPipe, err = c.StdoutPipe()
+	input, err = c.StdoutPipe()
 	if err != nil {
 		log.Panic(err)
 	}
@@ -58,6 +60,25 @@ func execSigrokCLI(duration int) {
 	}
 }
 
+func execSigrokCLI(duration int) error {
+	sigrokRunning = true
+	defer func() { sigrokRunning = false }()
+	buffer = make([]byte, duration*24_000, duration*24_000)
+	w := bufio.NewWriterSize(dataFile, int(math.Ceil(float64(duration)/1000.0))*1024*1024)
+	homePath, _ := os.UserHomeDir()
+	tempFilePath := path.Join(homePath, "quakeWorkingDir", "temp", "data.raw")
+	c := exec.Command(
+		"sigrok-cli",
+		"--driver=fx2lafw", "-O", "binary", "--time", fmt.Sprintf("%d", duration), "-o", tempFilePath, "--config", "samplerate=24m")
+
+	if err := c.Run(); err != nil {
+		return fmt.Errorf("run failed with error: %v", err)
+	}
+	input, _ = os.Open(tempFilePath)
+	convert(w)
+	return nil
+}
+
 // adcConvertCmd represents the convert command
 var adcConvertCmd = &cobra.Command{
 	Use:   "convert",
@@ -68,8 +89,8 @@ var adcConvertCmd = &cobra.Command{
 			err error
 		)
 
-		input, _ := cmd.Flags().GetString("if")
-		inputPipe, err = os.Open(input)
+		inputFile, _ := cmd.Flags().GetString("if")
+		input, err = os.Open(inputFile)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -110,7 +131,7 @@ var adcReadCmd = &cobra.Command{
 			"--driver=fx2lafw", "-O", "binary", "--time", fmt.Sprintf("%ds", second), "--config", "samplerate=24m")
 
 		var err error
-		inputPipe, err = c.StdoutPipe()
+		input, err = c.StdoutPipe()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -239,7 +260,7 @@ func dataReadyIndex() (drdyChan <-chan int) {
 
 		for n < min && err == nil {
 			var nn int
-			nn, err = inputPipe.Read(buffer[n:])
+			nn, err = input.Read(buffer[n:])
 			for i := n; i < n+nn-1; i++ {
 				tempDataReady[0] = !tempDataReady[1]
 				tempDataReady[1] = buffer[i+1]&logic1DataReadyMask == 0
