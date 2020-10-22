@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"crypto/sha512"
 	"fmt"
+	"github.com/spf13/afero"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -12,11 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/go-cmd/cmd"
 	"github.com/gorilla/websocket"
 	"github.com/iris-contrib/middleware/cors"
-	jwtmiddleware "github.com/iris-contrib/middleware/jwt"
 	"github.com/kataras/iris/v12"
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -31,22 +29,13 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-var readParams struct {
-	File     string `json:"file"`
-	Skip     int    `json:"skip"`
-	Duration int    `json:"duration"`
-}
-
 var sigrokRunning = false
-var dataFile *os.File
+var dataFile afero.File
 
 // CommandsList is the list of all available commands
 var CommandsList map[string]func(*flag.FlagSet) ([]byte, []byte, error)
 
 var flagsList = map[string]*flag.FlagSet{}
-
-//secret is the default secret for signing tokens
-const secret = "g3%k2Qi2j8B*XZVLfhi#7UMjJQ$#anVH"
 
 type usbDevice struct {
 	Name       string      `json:"name"`
@@ -70,26 +59,38 @@ var connectedUSB = map[int]usbDevice{}
 func NewAPI() *iris.Application {
 	api := iris.Default()
 	api.Options("/login", loginOptionsHandler)
-	api.Post("/login", loginPostHandler)
-
-	authMiddleware := jwtmiddleware.New(jwtmiddleware.Config{
-		ValidationKeyGetter: func(_ *jwt.Token) (interface{}, error) {
-			if os.Getenv("SECRET") != "" {
-				return []byte(os.Getenv("SECRET")), nil
-			}
-			return []byte(secret), nil
-		},
-
-		SigningMethod: jwt.SigningMethodHS512,
-	})
 
 	api.Use(cors.AllowAll())
 
 	api.Get("/", homeHandler)
 
+	api.Get("/tree", func(ctx iris.Context) {
+		list, err := afero.ReadDir(dataFS, "/")
+		if err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": "invalid path parameter in url",
+			})
+			return
+		}
+		type item struct {
+			Name string `json:"name"`
+			Dir  bool   `json:"dir"`
+		}
+		fd := make([]item, 0)
+		for _, info := range list {
+			fd = append(fd, item{Name: info.Name(), Dir: info.IsDir()})
+		}
+		ctx.StatusCode(iris.StatusOK)
+		ctx.JSON(iris.Map{
+			"directory": "/",
+			"items":     fd,
+		})
+	})
+	api.Get("/tree/{dir:path}", treeHandler)
+
 	api.Get("/readlive", readLiveHandler)
 	api.Post("/readlive", readLivePostHandler)
-	// api.Any("/readlive", readLiveHandler)
 
 	api.Post("/setup", setupHandler)
 	api.Options("/command", homeHandler)
@@ -100,9 +101,31 @@ func NewAPI() *iris.Application {
 
 	api.Get("/usb/all", getAllUSB)
 
-	api.Use(authMiddleware.Serve)
-
 	return api
+}
+
+func treeHandler(ctx iris.Context) {
+	list, err := afero.ReadDir(dataFS, "/"+ctx.Params().Get("dir"))
+	if err != nil {
+		ctx.StatusCode(iris.StatusBadRequest)
+		_, _ = ctx.JSON(iris.Map{
+			"error": "invalid path parameter in url",
+		})
+		return
+	}
+	type item struct {
+		Name string `json:"name"`
+		Dir  bool   `json:"dir"`
+	}
+	fd := make([]item, 0)
+	for _, info := range list {
+		fd = append(fd, item{Name: info.Name(), Dir: info.IsDir()})
+	}
+	ctx.StatusCode(iris.StatusOK)
+	ctx.JSON(iris.Map{
+		"directory": "/" + ctx.Params().Get("dir"),
+		"items":     fd,
+	})
 }
 
 func setupHandler(ctx iris.Context) {
@@ -114,6 +137,11 @@ func setupHandler(ctx iris.Context) {
 		return
 	}
 	setupData := struct {
+		Channels []string `json:"channels"`
+		Gains    []struct {
+			Ch    string `json:"ch"`
+			Value int    `json:"value"`
+		}
 		StartMode    string `json:"startMode"`
 		RecordTime   int    `json:"recordTime"`
 		SamplingTime int    `json:"samplingTime"`
@@ -135,33 +163,23 @@ func setupHandler(ctx iris.Context) {
 		})
 		return
 	}
-	//TODO: this should be changed to allow sub-projects.
-	if strings.Contains(setupData.ProjectName, "/") || strings.Contains(setupData.FileName, "/") {
+	if err := dataFS.MkdirAll(setupData.ProjectName, os.ModeDir|0755); err != nil {
 		ctx.StatusCode(iris.StatusBadRequest)
 		_, _ = ctx.JSON(iris.Map{
-			"error": "invalid file name or project name",
+			"error": "invalid file project path",
 		})
 		return
 	}
 
-	wd, _ := os.Getwd()
-	if err := os.MkdirAll(filepath.Join(wd, setupData.ProjectName), os.ModeDir|0755); err != nil {
-		ctx.StatusCode(iris.StatusBadRequest)
-		_, _ = ctx.JSON(iris.Map{
-			"error": err,
-		})
-		return
-	}
-
-	_, err := os.Stat(filepath.Join(wd, setupData.ProjectName, setupData.FileName+".bin"))
-	if !os.IsNotExist(err) {
+	if exists, _ := afero.Exists(dataFS, filepath.Join(setupData.ProjectName, setupData.FileName)); exists {
 		ctx.StatusCode(iris.StatusBadRequest)
 		_, _ = ctx.JSON(iris.Map{
 			"error": "file already exists",
 		})
 		return
 	}
-	dataFile, _ = os.Create(filepath.Join(wd, setupData.ProjectName, setupData.FileName+".bin"))
+
+	dataFile, _ = dataFS.Create(filepath.Join(setupData.ProjectName, setupData.FileName))
 	if err := execSigrokCLI(setupData.RecordTime); err != nil {
 		ctx.StatusCode(iris.StatusInternalServerError)
 		_, _ = ctx.JSON(iris.Map{
@@ -169,7 +187,6 @@ func setupHandler(ctx iris.Context) {
 		})
 		return
 	}
-
 	ctx.StatusCode(iris.StatusOK)
 }
 
@@ -201,8 +218,7 @@ func commandHandler(ctx iris.Context) {
 	if command == nil {
 		ctx.StatusCode(iris.StatusNotImplemented)
 		_, _ = ctx.JSON(iris.Map{
-			"message": "Unknown command",
-			//"error":   err.Error(),
+			"error": "Unknown command",
 		})
 		log.Printf("unknown command: %s", data.Command)
 		return
@@ -246,11 +262,9 @@ func commandHandler(ctx iris.Context) {
 	}
 
 	ctx.StatusCode(iris.StatusOK)
-	log.Printf("tx: %v, rx: %v", tx, rx)
 	_, _ = ctx.JSON(iris.Map{
-		"message": "success",
-		"tx":      fmt.Sprintf("%v", tx),
-		"rx":      fmt.Sprintf("%v", rx),
+		"tx": fmt.Sprintf("%v", tx),
+		"rx": fmt.Sprintf("%v", rx),
 	})
 }
 
@@ -298,9 +312,6 @@ func readLiveHandler(ctx iris.Context) {
 
 func readLivePostHandler(ctx iris.Context) {
 	info, _ := os.Stat("direct.bin")
-	log.Println("readLivePostHandler called")
-	_ = ctx.ReadJSON(&readParams)
-	log.Println(readParams, info.Size()/80)
 	_, _ = ctx.JSON(iris.Map{
 		"code": 200,
 		"size": info.Size() / 80,
@@ -324,49 +335,6 @@ func homeHandler(ctx iris.Context) {
 
 func loginOptionsHandler(ctx iris.Context) {
 	ctx.Header("Allow", "OPTIONS, POST")
-}
-
-func loginPostHandler(ctx iris.Context) {
-	s := sha512.New()
-	s.Write([]byte(ctx.FormValue("username")))
-
-	var t *jwt.Token
-
-	/*pass: @12348765@ */
-	if ctx.FormValue("username") == "admin" && string(s.Sum(nil)) == "2871d000b43b5c6220e2a0e210966f5f8ce7ebbbc198eb0da7069aea08f4659160316a7e98b1d8bc86b949c693d1b561eecc05d4e67499bf490c3e30bd207588" {
-		t = jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.StandardClaims{
-			Id:        "1",
-			ExpiresAt: time.Now().Add(8 * time.Hour).Unix(),
-		})
-
-		/*pass: randomuserpass*/
-	} else if ctx.FormValue("username") == "user" && string(s.Sum(nil)) == "9412a466356c0fb54f742f0e39ac07677c41d6fb814344baed544db4f98ab1e00b74110e6f91a5f88ded89a9c0d0b5a5e382d0af708c0f8cbcd7ab62cbc13156" {
-		t = jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.StandardClaims{
-			Id:        "2",
-			ExpiresAt: time.Now().Add(8 * time.Hour).Unix(),
-		})
-	} else {
-		ctx.StatusCode(iris.StatusUnauthorized)
-		_, _ = ctx.JSON(iris.Map{"success": false, "error": "incorrect username and/or password"})
-		return
-	}
-
-	var token string
-	var err error
-	if os.Getenv("SECRET") != "" {
-		token, err = t.SignedString([]byte(os.Getenv("SECRET")))
-	} else {
-		token, err = t.SignedString([]byte(secret))
-	}
-
-	if err != nil {
-		log.Printf("fialed to sign token: %v", err)
-		ctx.StatusCode(iris.StatusInternalServerError)
-		_, _ = ctx.JSON(iris.Map{"success": false})
-		return
-	}
-	ctx.StatusCode(iris.StatusOK)
-	_, _ = ctx.JSON(iris.Map{"success": true, "token": token})
 }
 
 func getAllUSB(ctx iris.Context) {
