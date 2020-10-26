@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/afero"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,6 +15,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/iris-contrib/middleware/cors"
 	"github.com/kataras/iris/v12"
+	"github.com/spf13/afero"
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
@@ -82,15 +82,17 @@ func NewAPI() *iris.Application {
 			fd = append(fd, item{Name: info.Name(), Dir: info.IsDir()})
 		}
 		ctx.StatusCode(iris.StatusOK)
-		ctx.JSON(iris.Map{
+		_, _ = ctx.JSON(iris.Map{
 			"directory": "/",
 			"items":     fd,
 		})
 	})
 	api.Get("/tree/{dir:path}", treeHandler)
 
-	api.Get("/readlive", readLiveHandler)
-	api.Post("/readlive", readLivePostHandler)
+	api.Get("/plot", readDataHandler)
+	api.Post("/plot", readDataPostHandler)
+
+	api.Get("/plot/{file:path}", plotHandler)
 
 	api.Post("/setup", setupHandler)
 	api.Options("/command", homeHandler)
@@ -102,6 +104,28 @@ func NewAPI() *iris.Application {
 	api.Get("/usb/all", getAllUSB)
 
 	return api
+}
+
+func plotHandler(ctx iris.Context) {
+	dir, err := afero.IsDir(dataFS, "/"+ctx.Params().Get("file"))
+	if err != nil {
+		ctx.StatusCode(iris.StatusNotFound)
+		_, _ = ctx.JSON(iris.Map{
+			"error": err,
+		})
+		return
+	}
+	if dir {
+		ctx.StatusCode(iris.StatusBadRequest)
+		_, _ = ctx.JSON(iris.Map{
+			"error": err,
+		})
+		return
+	}
+	f, _ := dataFS.Open("/" + ctx.Params().Get("file"))
+	stat, _ := f.Stat()
+	ctx.StatusCode(iris.StatusOK)
+	ctx.ServeContent(f, f.Name()+".bin", stat.ModTime())
 }
 
 func treeHandler(ctx iris.Context) {
@@ -122,7 +146,7 @@ func treeHandler(ctx iris.Context) {
 		fd = append(fd, item{Name: info.Name(), Dir: info.IsDir()})
 	}
 	ctx.StatusCode(iris.StatusOK)
-	ctx.JSON(iris.Map{
+	_, _ = ctx.JSON(iris.Map{
 		"directory": "/" + ctx.Params().Get("dir"),
 		"items":     fd,
 	})
@@ -180,6 +204,7 @@ func setupHandler(ctx iris.Context) {
 	}
 
 	dataFile, _ = dataFS.Create(filepath.Join(setupData.ProjectName, setupData.FileName))
+	SendSyncSignal()
 	if err := execSigrokCLI(setupData.RecordTime); err != nil {
 		ctx.StatusCode(iris.StatusInternalServerError)
 		_, _ = ctx.JSON(iris.Map{
@@ -268,14 +293,33 @@ func commandHandler(ctx iris.Context) {
 	})
 }
 
-func readLiveHandler(ctx iris.Context) {
-	log.Println("readLiveHandler called")
+func readDataHandler(ctx iris.Context) {
 	conn, err := upgrader.Upgrade(ctx.ResponseWriter(), ctx.Request(), nil)
 	if err != nil {
 		log.Println("WebSocket creation error: ", err)
 		return
 	}
-	f, _ := os.Open("direct.bin")
+
+	form := struct {
+		File string `json:"file"`
+	}{}
+	if err := ctx.ReadQuery(&form); err != nil {
+		_ = conn.WriteJSON(iris.Map{
+			"err": err,
+		})
+		_ = conn.Close()
+		return
+	}
+	log.Println(form.File)
+
+	f, err := dataFS.Open(form.File)
+	if err != nil {
+		_ = conn.WriteJSON(iris.Map{
+			"err": fmt.Errorf("failed to open file: %v", err),
+		})
+		_ = conn.Close()
+		return
+	}
 	b, _ := ioutil.ReadAll(f)
 
 	// w, _ := conn.NextWriter(websocket.BinaryMessage)
@@ -286,34 +330,33 @@ func readLiveHandler(ctx iris.Context) {
 	}
 	time.Sleep(1 * time.Second)
 	_ = conn.Close()
-	fmt.Println(time.Since(now), len(b)/80)
-	//dataFile, err = os.OpenFile(path.Join("/", "tmp", readParams.File+".txt"), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0666)
-	//if err != nil {
-	//	log.Println("failed to open file: ", err)
-	//	return
-	//}
-	//rcvToSend := make(chan string)
-	//go read(readOptions{
-	//	file:     dataFile,
-	//	skip:     readParams.Skip,
-	//	duration: readParams.Duration,
-	//	ch:       rcvToSend,
-	//})
-	//for {
-	//	data, ok := <-rcvToSend
-	//	if !ok {
-	//		conn.WriteMessage(websocket.TextMessage, []byte("Send finished"))
-	//		conn.Close()
-	//		return
-	//	}
-	//	conn.WriteMessage(websocket.TextMessage, []byte(data))
-	//}
+	log.Println(time.Since(now), len(b)/80)
 }
 
-func readLivePostHandler(ctx iris.Context) {
-	info, _ := os.Stat("direct.bin")
+func readDataPostHandler(ctx iris.Context) {
+	form := struct {
+		File string `json:"file"`
+	}{}
+
+	if err := ctx.ReadJSON(&form); err != nil {
+		ctx.StatusCode(iris.StatusBadRequest)
+		_, _ = ctx.JSON(iris.Map{
+			"message": "failed with error",
+		})
+		return
+	}
+
+	info, err := dataFS.Stat(form.File)
+	if err != nil {
+		ctx.StatusCode(iris.StatusBadRequest)
+		_, _ = ctx.JSON(iris.Map{
+			"err": fmt.Errorf("failed to open file: %v", err),
+		})
+		return
+	}
+
+	ctx.StatusCode(iris.StatusOK)
 	_, _ = ctx.JSON(iris.Map{
-		"code": 200,
 		"size": info.Size() / 80,
 	})
 }

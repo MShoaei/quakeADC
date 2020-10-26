@@ -13,7 +13,7 @@ import (
 )
 
 var cfgFile string
-var adcConnection *driver.Adc77684
+var adcConnection *driver.Adc7768
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{

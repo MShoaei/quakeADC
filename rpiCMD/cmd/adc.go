@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"log"
 
 	"periph.io/x/periph/conn/gpio"
@@ -1196,17 +1195,9 @@ var adcHardReset = &cobra.Command{
 	},
 }
 
-var adcSyncControl = &cobra.Command{
-	Use: "Sync",
-	Run: func(cmd *cobra.Command, args []string) {
-		switch args[0] {
-		case "0":
-			bcm283x.GPIO7.FastOut(gpio.Low)
-		case "1":
-			bcm283x.GPIO7.FastOut(gpio.High)
-		}
-		fmt.Println(bcm283x.GPIO7.FastRead())
-	},
+func SendSyncSignal() {
+	bcm283x.GPIO7.FastOut(gpio.Low)
+	bcm283x.GPIO7.FastOut(gpio.High)
 }
 
 func init() {
@@ -1222,7 +1213,7 @@ func init() {
 		adcCh2GainMSB, adcCh2GainMid, adcCh2GainLSB, adcCh3GainMSB, adcCh3GainMid, adcCh3GainLSB,
 		adcCh0SyncOffset, adcCh1SyncOffset, adcCh2SyncOffset, adcCh3SyncOffset,
 		adcDiagnosticRX, adcDiagnosticMuxControl, adcDiagnosticDelayControl, adcChopControl,
-		adcHardReset, adcSyncControl)
+		adcHardReset)
 
 	f = adcCmd.PersistentFlags()
 	f.Uint8("adc", 0, "select the ADC to control: [1..9], 0: all")

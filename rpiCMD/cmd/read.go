@@ -275,12 +275,13 @@ func dataReadyIndex() (drdyChan <-chan int) {
 			}
 			n += nn
 		}
-		if err != nil {
-			//log.Fatal(err)
-			log.Println(err)
-		}
 		close(drdy)
-		fmt.Printf("%d\n", counter)
+		if err != nil {
+			log.Printf("early error while reading: %v", err)
+			return
+		}
+		fmt.Printf("after SUCCESSFUL data convert%d\n", counter)
+		return
 	}()
 	return drdy
 }

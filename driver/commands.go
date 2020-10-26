@@ -2,15 +2,11 @@ package driver
 
 import (
 	"fmt"
-	"log"
-	"time"
-
 	flag "github.com/spf13/pflag"
-	"gobot.io/x/gobot/drivers/gpio"
-	"gobot.io/x/gobot/platforms/raspi"
+	"log"
 )
 
-func (adc *Adc77684) ChStandby(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) ChStandby(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		//err   error
 		//tx    = make([]byte, 2)
@@ -96,7 +92,7 @@ func (adc *Adc77684) ChStandby(flags *flag.FlagSet) (tx []byte, rx []byte, err e
 	}
 }
 
-func (adc *Adc77684) ChModeA(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) ChModeA(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		write bool
@@ -182,7 +178,7 @@ func (adc *Adc77684) ChModeA(flags *flag.FlagSet) (tx []byte, rx []byte, err err
 	}
 }
 
-func (adc *Adc77684) ChModeB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) ChModeB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		write bool
@@ -268,7 +264,7 @@ func (adc *Adc77684) ChModeB(flags *flag.FlagSet) (tx []byte, rx []byte, err err
 	}
 }
 
-func (adc *Adc77684) ChModeSel(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) ChModeSel(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		c     uint8
@@ -354,7 +350,7 @@ func (adc *Adc77684) ChModeSel(flags *flag.FlagSet) (tx []byte, rx []byte, err e
 	}
 }
 
-func (adc *Adc77684) PowerMode(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) PowerMode(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -460,7 +456,7 @@ func (adc *Adc77684) PowerMode(flags *flag.FlagSet) (tx []byte, rx []byte, err e
 	}
 }
 
-func (adc *Adc77684) GeneralConf(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) GeneralConf(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -560,7 +556,7 @@ func (adc *Adc77684) GeneralConf(flags *flag.FlagSet) (tx []byte, rx []byte, err
 	}
 }
 
-func (adc *Adc77684) DataControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) DataControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -657,7 +653,7 @@ func (adc *Adc77684) DataControl(flags *flag.FlagSet) (tx []byte, rx []byte, err
 	}
 }
 
-func (adc *Adc77684) InterfaceConf(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) InterfaceConf(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -745,7 +741,7 @@ func (adc *Adc77684) InterfaceConf(flags *flag.FlagSet) (tx []byte, rx []byte, e
 	}
 }
 
-func (adc *Adc77684) BISTControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) BISTControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -812,7 +808,7 @@ func (adc *Adc77684) BISTControl(flags *flag.FlagSet) (tx []byte, rx []byte, err
 	}
 }
 
-func (adc *Adc77684) DeviceStatus(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) DeviceStatus(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l uint8
 	)
@@ -857,7 +853,7 @@ func (adc *Adc77684) DeviceStatus(flags *flag.FlagSet) (tx []byte, rx []byte, er
 	}
 }
 
-func (adc *Adc77684) RevisionID(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) RevisionID(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l uint8
 	)
@@ -902,7 +898,7 @@ func (adc *Adc77684) RevisionID(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 	}
 }
 
-func (adc *Adc77684) GPIOControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) GPIOControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -1034,7 +1030,7 @@ func (adc *Adc77684) GPIOControl(flags *flag.FlagSet) (tx []byte, rx []byte, err
 	}
 }
 
-func (adc *Adc77684) GPIOWriteData(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) GPIOWriteData(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -1153,7 +1149,7 @@ func (adc *Adc77684) GPIOWriteData(flags *flag.FlagSet) (tx []byte, rx []byte, e
 	}
 }
 
-func (adc *Adc77684) GPIOReadData(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) GPIOReadData(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l uint8
 	)
@@ -1198,7 +1194,7 @@ func (adc *Adc77684) GPIOReadData(flags *flag.FlagSet) (tx []byte, rx []byte, er
 	}
 }
 
-func (adc *Adc77684) PrechargeBuffer1(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) PrechargeBuffer1(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -1304,7 +1300,7 @@ func (adc *Adc77684) PrechargeBuffer1(flags *flag.FlagSet) (tx []byte, rx []byte
 	}
 }
 
-func (adc *Adc77684) PrechargeBuffer2(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) PrechargeBuffer2(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -1410,7 +1406,7 @@ func (adc *Adc77684) PrechargeBuffer2(flags *flag.FlagSet) (tx []byte, rx []byte
 	}
 }
 
-func (adc *Adc77684) PositiveRefPrechargeBuf(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) PositiveRefPrechargeBuf(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -1516,7 +1512,7 @@ func (adc *Adc77684) PositiveRefPrechargeBuf(flags *flag.FlagSet) (tx []byte, rx
 	}
 }
 
-func (adc *Adc77684) NegativeRefPrechargeBuf(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) NegativeRefPrechargeBuf(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -1622,7 +1618,7 @@ func (adc *Adc77684) NegativeRefPrechargeBuf(flags *flag.FlagSet) (tx []byte, rx
 	}
 }
 
-func (adc *Adc77684) Ch0OffsetMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch0OffsetMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -1682,7 +1678,7 @@ func (adc *Adc77684) Ch0OffsetMSB(flags *flag.FlagSet) (tx []byte, rx []byte, er
 	}
 }
 
-func (adc *Adc77684) Ch0OffsetMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch0OffsetMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -1742,7 +1738,7 @@ func (adc *Adc77684) Ch0OffsetMid(flags *flag.FlagSet) (tx []byte, rx []byte, er
 	}
 }
 
-func (adc *Adc77684) Ch0OffsetLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch0OffsetLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -1802,7 +1798,7 @@ func (adc *Adc77684) Ch0OffsetLSB(flags *flag.FlagSet) (tx []byte, rx []byte, er
 	}
 }
 
-func (adc *Adc77684) Ch1OffsetMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch1OffsetMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -1862,7 +1858,7 @@ func (adc *Adc77684) Ch1OffsetMSB(flags *flag.FlagSet) (tx []byte, rx []byte, er
 	}
 }
 
-func (adc *Adc77684) Ch1OffsetMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch1OffsetMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -1922,7 +1918,7 @@ func (adc *Adc77684) Ch1OffsetMid(flags *flag.FlagSet) (tx []byte, rx []byte, er
 	}
 }
 
-func (adc *Adc77684) Ch1OffsetLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch1OffsetLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -1982,7 +1978,7 @@ func (adc *Adc77684) Ch1OffsetLSB(flags *flag.FlagSet) (tx []byte, rx []byte, er
 	}
 }
 
-func (adc *Adc77684) Ch2OffsetMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch2OffsetMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -2042,7 +2038,7 @@ func (adc *Adc77684) Ch2OffsetMSB(flags *flag.FlagSet) (tx []byte, rx []byte, er
 	}
 }
 
-func (adc *Adc77684) Ch2OffsetMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch2OffsetMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -2102,7 +2098,7 @@ func (adc *Adc77684) Ch2OffsetMid(flags *flag.FlagSet) (tx []byte, rx []byte, er
 	}
 }
 
-func (adc *Adc77684) Ch2OffsetLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch2OffsetLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -2162,7 +2158,7 @@ func (adc *Adc77684) Ch2OffsetLSB(flags *flag.FlagSet) (tx []byte, rx []byte, er
 	}
 }
 
-func (adc *Adc77684) Ch3OffsetMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch3OffsetMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -2222,7 +2218,7 @@ func (adc *Adc77684) Ch3OffsetMSB(flags *flag.FlagSet) (tx []byte, rx []byte, er
 	}
 }
 
-func (adc *Adc77684) Ch3OffsetMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch3OffsetMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -2282,7 +2278,7 @@ func (adc *Adc77684) Ch3OffsetMid(flags *flag.FlagSet) (tx []byte, rx []byte, er
 	}
 }
 
-func (adc *Adc77684) Ch3OffsetLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch3OffsetLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -2342,7 +2338,7 @@ func (adc *Adc77684) Ch3OffsetLSB(flags *flag.FlagSet) (tx []byte, rx []byte, er
 	}
 }
 
-func (adc *Adc77684) Ch0GainMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch0GainMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -2402,7 +2398,7 @@ func (adc *Adc77684) Ch0GainMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 	}
 }
 
-func (adc *Adc77684) Ch0GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch0GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -2462,7 +2458,7 @@ func (adc *Adc77684) Ch0GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 	}
 }
 
-func (adc *Adc77684) Ch0GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch0GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -2522,7 +2518,7 @@ func (adc *Adc77684) Ch0GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 	}
 }
 
-func (adc *Adc77684) Ch1GainMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch1GainMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -2582,7 +2578,7 @@ func (adc *Adc77684) Ch1GainMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 	}
 }
 
-func (adc *Adc77684) Ch1GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch1GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -2642,7 +2638,7 @@ func (adc *Adc77684) Ch1GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 	}
 }
 
-func (adc *Adc77684) Ch1GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch1GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -2702,7 +2698,7 @@ func (adc *Adc77684) Ch1GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 	}
 }
 
-func (adc *Adc77684) Ch2GainMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch2GainMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -2762,7 +2758,7 @@ func (adc *Adc77684) Ch2GainMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 	}
 }
 
-func (adc *Adc77684) Ch2GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch2GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -2822,7 +2818,7 @@ func (adc *Adc77684) Ch2GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 	}
 }
 
-func (adc *Adc77684) Ch2GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch2GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -2882,7 +2878,7 @@ func (adc *Adc77684) Ch2GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 	}
 }
 
-func (adc *Adc77684) Ch3GainMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch3GainMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -2942,7 +2938,7 @@ func (adc *Adc77684) Ch3GainMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 	}
 }
 
-func (adc *Adc77684) Ch3GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch3GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -3002,7 +2998,7 @@ func (adc *Adc77684) Ch3GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 	}
 }
 
-func (adc *Adc77684) Ch3GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch3GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -3062,7 +3058,7 @@ func (adc *Adc77684) Ch3GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 	}
 }
 
-func (adc *Adc77684) Ch0SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch0SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -3122,7 +3118,7 @@ func (adc *Adc77684) Ch0SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, e
 	}
 }
 
-func (adc *Adc77684) Ch1SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch1SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -3182,7 +3178,7 @@ func (adc *Adc77684) Ch1SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, e
 	}
 }
 
-func (adc *Adc77684) Ch2SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch2SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -3242,7 +3238,7 @@ func (adc *Adc77684) Ch2SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, e
 	}
 }
 
-func (adc *Adc77684) Ch3SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) Ch3SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -3302,7 +3298,7 @@ func (adc *Adc77684) Ch3SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, e
 	}
 }
 
-func (adc *Adc77684) DiagnosticRX(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) DiagnosticRX(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -3408,7 +3404,7 @@ func (adc *Adc77684) DiagnosticRX(flags *flag.FlagSet) (tx []byte, rx []byte, er
 	}
 }
 
-func (adc *Adc77684) DiagnosticMuxControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) DiagnosticMuxControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -3496,7 +3492,7 @@ func (adc *Adc77684) DiagnosticMuxControl(flags *flag.FlagSet) (tx []byte, rx []
 	}
 }
 
-func (adc *Adc77684) DiagnosticDelayControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) DiagnosticDelayControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -3568,7 +3564,7 @@ func (adc *Adc77684) DiagnosticDelayControl(flags *flag.FlagSet) (tx []byte, rx 
 	}
 }
 
-func (adc *Adc77684) ChopControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) ChopControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
 	var (
 		h, l  uint8
 		s     uint8
@@ -3648,16 +3644,17 @@ func (adc *Adc77684) ChopControl(flags *flag.FlagSet) (tx []byte, rx []byte, err
 	}
 }
 
-func (adc *Adc77684) HardReset(_ *flag.FlagSet) (_ []byte, _ []byte, err error) {
-	r := raspi.NewAdaptor()
-	pin := gpio.NewDirectPinDriver(r, "22")
-
-	_ = pin.DigitalWrite(0)
-	time.Sleep(3 * time.Second)
-	_ = pin.DigitalWrite(1)
-	if err := pin.Halt(); err != nil {
-		log.Println(err)
-		return nil, nil, err
-	}
-	return nil, nil, nil
+func (adc *Adc7768) HardReset(_ *flag.FlagSet) (_ []byte, _ []byte, err error) {
+	panic("this should be implemented")
+	//r := raspi.NewAdaptor()
+	//pin := gpio.NewDirectPinDriver(r, "22")
+	//
+	//_ = pin.DigitalWrite(0)
+	//time.Sleep(3 * time.Second)
+	//_ = pin.DigitalWrite(1)
+	//if err := pin.Halt(); err != nil {
+	//	log.Println(err)
+	//	return nil, nil, err
+	//}
+	//return nil, nil, nil
 }

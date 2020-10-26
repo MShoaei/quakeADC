@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"strconv"
-
 	"github.com/MShoaei/quakeADC/driver"
+	"github.com/MShoaei/quakeADC/driver/xmega"
 	"github.com/spf13/cobra"
 	"gobot.io/x/gobot/drivers/spi"
+	"strconv"
 )
 
 // xmegaCmd represents the adc command
@@ -38,6 +38,15 @@ var xmegaCmd = &cobra.Command{
 	},
 }
 
+var xmegaReset = &cobra.Command{
+	Use:   "reset",
+	Short: "reset xmega if it is unresponsive",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return xmega.Reset()
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(xmegaCmd)
+	xmegaCmd.AddCommand(xmegaReset)
 }
