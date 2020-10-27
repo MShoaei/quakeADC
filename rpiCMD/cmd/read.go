@@ -94,7 +94,8 @@ var adcConvertCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalln(err)
 		}
-
+		stat,_:= os.Stat(inputFile)
+		buffer = make([]byte, stat.Size())
 		output, _ := cmd.Flags().GetString("of")
 		if output == "" {
 			o = os.Stdout
