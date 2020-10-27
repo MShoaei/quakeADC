@@ -49,7 +49,7 @@ func StatusLED(conn spi.Connection, s status) error {
 
 func ResetAllADC(conn spi.Connection) error {
 	var tx []byte
-	tx = []byte{uint8(0x01), uint8(0x01), 0}
+	tx = []byte{uint8(0x01), uint8(0x0f), 0}
 	rx := make([]byte, 3)
 
 	_ = driver.EnableChipSelect(0)
