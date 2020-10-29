@@ -3,130 +3,72 @@ package driver
 import (
 	"fmt"
 	flag "github.com/spf13/pflag"
-	"log"
 )
 
-func (adc *Adc7768) ChStandby(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		//err   error
-		//tx    = make([]byte, 2)
-		//rx    = make([]byte, 2)
-		h, l  uint8
-		c     bool
-		write bool
-		//flags = cmd.Flags()
-	)
+type ChStandbyOpts struct {
+	Write    bool
+	Channels [8]bool
+}
+
+func (adc *Adc7768) ChStandby(opts ChStandbyOpts, cs uint8) (tx []byte, rx []byte, err error) {
+	var h, l uint8
+
 	tx = make([]byte, 2)
 	rx = make([]byte, 2)
-	write, _ = flags.GetBool("write")
-	if !write {
-		h = h | 0x80
+	if !opts.Write {
+		h |= 0x80
 	}
 
-	//h |= driver.ChannelStandby
 	h |= ChannelStandby
 
-	c, err = flags.GetBool("ch3")
-	if err != nil {
-		return nil, nil, err
-	}
-	if c {
-		l |= 0x08
-	}
-
-	c, err = flags.GetBool("ch2")
-	if err != nil {
-		return nil, nil, err
-	}
-	if c {
-		l |= 0x04
-	}
-
-	c, err = flags.GetBool("ch1")
-	if err != nil {
-		return nil, nil, err
-	}
-	if c {
-		l |= 0x02
-	}
-
-	c, err = flags.GetBool("ch0")
-	if err != nil {
-		return nil, nil, err
-	}
-	if c {
-		l |= 0x01
+	for i, enabled := range opts.Channels {
+		if enabled {
+			l |= 0x80 >> i
+		}
 	}
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return nil, nil, nil
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
+	return tx, rx, nil
 }
 
-func (adc *Adc7768) ChModeA(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		write bool
-	)
+type ChModeOpts struct {
+	Write   bool
+	FType   uint8
+	DecRate uint16
+}
+
+func (adc *Adc7768) ChModeA(opts ChModeOpts, cs uint8) (tx []byte, rx []byte, err error) {
+	var h, l uint8
+
 	tx = make([]byte, 2)
 	rx = make([]byte, 2)
 
-	write, _ = flags.GetBool("write")
-	if !write {
+	if !opts.Write {
 		h |= 0x80
 	}
 
 	h |= ChannelModeA
 
-	ft, err := flags.GetUint8("f-type")
-	if err != nil {
-		return nil, nil, err
+	if opts.FType < 0 || opts.FType > 1 {
+		return nil, nil, fmt.Errorf("invalid filter type. expected 0 or 1, got %d", opts.FType)
 	}
-	if ft < 0 || ft > 1 {
-		return nil, nil, fmt.Errorf("invalid filter type. expected 0 or 1, got %d", ft)
-	}
-	switch ft {
+	switch opts.FType {
 	case 0:
 		l |= 0x0
 	case 1:
 		l |= 0x8
 	}
 
-	dr, err := flags.GetUint16("dec-rate")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	switch dr {
+	switch opts.DecRate {
 	case 32:
 		l |= 0x0
 	case 64:
@@ -140,79 +82,45 @@ func (adc *Adc7768) ChModeA(flags *flag.FlagSet) (tx []byte, rx []byte, err erro
 	case 1024:
 		l |= 0x5
 	default:
-		return nil, nil, fmt.Errorf("invalid decimation rate. got %d", dr)
+		return nil, nil, fmt.Errorf("invalid decimation rate. got %d", opts.DecRate)
 	}
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
 	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
+	return tx, rx, err
 }
 
-func (adc *Adc7768) ChModeB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		write bool
-	)
+func (adc *Adc7768) ChModeB(opts ChModeOpts, cs uint8) (tx []byte, rx []byte, err error) {
+	var h, l uint8
+
 	tx = make([]byte, 2)
 	rx = make([]byte, 2)
 
-	write, _ = flags.GetBool("write")
-	if !write {
+	if !opts.Write {
 		h |= 0x80
 	}
 
 	h |= ChannelModeB
 
-	ft, err := flags.GetUint8("f-type")
-	if err != nil {
-		return nil, nil, err
+	if opts.FType < 0 || opts.FType > 1 {
+		return nil, nil, fmt.Errorf("invalid filter type. expected 0 or 1, got %d", opts.FType)
 	}
-	if ft < 0 || ft > 1 {
-		return nil, nil, fmt.Errorf("invalid filter type. expected 0 or 1, got %d", ft)
-	}
-	switch ft {
+	switch opts.FType {
 	case 0:
 		l |= 0x0
 	case 1:
 		l |= 0x8
 	}
 
-	dr, err := flags.GetUint16("dec-rate")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	switch dr {
+	switch opts.DecRate {
 	case 32:
 		l |= 0x0
 	case 64:
@@ -226,162 +134,86 @@ func (adc *Adc7768) ChModeB(flags *flag.FlagSet) (tx []byte, rx []byte, err erro
 	case 1024:
 		l |= 0x5
 	default:
-		return nil, nil, fmt.Errorf("invalid decimation rate. got %d", dr)
+		return nil, nil, fmt.Errorf("invalid decimation rate. got %d", opts.DecRate)
 	}
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
 	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
+	return tx, rx, err
 }
 
-func (adc *Adc7768) ChModeSel(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		c     uint8
-		write bool
-	)
+type ChModeSelectOpts struct {
+	Write    bool
+	Channels [8]uint8
+}
+
+func (adc *Adc7768) ChModeSel(opts ChModeSelectOpts, cs uint8) (tx []byte, rx []byte, err error) {
+	var h, l uint8
+
 	tx = make([]byte, 2)
 	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
+	if !opts.Write {
+		h |= 0x80
 	}
 
 	h |= ChannelModeSelect
 
-	c, err = flags.GetUint8("ch3")
-	if err != nil {
-		return nil, nil, err
+	for i, mode := range opts.Channels {
+		switch mode {
+		case 0:
+			l |= 0x00 << i
+		case 1:
+			l |= 0x01 << i
+		default:
+			return nil, nil, fmt.Errorf("invalid channel mode. expected 0 or 1, got %d", mode)
+		}
 	}
-	if c == 1 {
-		l |= 0x20
-	}
-
-	c, err = flags.GetUint8("ch2")
-	if err != nil {
-		return nil, nil, err
-	}
-	if c == 1 {
-		l |= 0x10
-	}
-
-	c, err = flags.GetUint8("ch1")
-	if err != nil {
-		return nil, nil, err
-	}
-	if c == 1 {
-		l |= 0x02
-	}
-
-	c, err = flags.GetUint8("ch0")
-	if err != nil {
-		return nil, nil, err
-	}
-	if c == 1 {
-		l |= 0x01
-	}
-
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
+	return tx, rx, nil
 }
 
-func (adc *Adc7768) PowerMode(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
+type PowerModeOpts struct {
+	Write     bool
+	Sleep     uint8
+	Power     uint8
+	LVDSClock uint8
+	MCLKDiv   uint8
+}
+
+func (adc *Adc7768) PowerMode(opts PowerModeOpts, cs uint8) (tx []byte, rx []byte, err error) {
+	var h, l uint8
 	tx = make([]byte, 2)
 	rx = make([]byte, 2)
 
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
+	if !opts.Write {
 		h = h | 0x80
 	}
 
 	h |= PowerMode
 
-	s, err = flags.GetUint8("sleep")
-	if err != nil {
-		return nil, nil, err
-	}
-	if s == 1 {
+	if opts.Sleep == 1 {
 		l |= 0x80
 	}
 
-	s, err = flags.GetUint8("power")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
+	switch opts.Power {
 	case 0:
 		l |= 0x00
 	case 2:
@@ -389,28 +221,19 @@ func (adc *Adc7768) PowerMode(flags *flag.FlagSet) (tx []byte, rx []byte, err er
 	case 3:
 		l |= 0x30
 	default:
-		return nil, nil, fmt.Errorf("invalid value for power. got %d, expected 0, 2 or 3", s)
+		return nil, nil, fmt.Errorf("invalid value for power. got %d, expected 0, 2 or 3", opts.Power)
 	}
 
-	s, err = flags.GetUint8("lvds-clk")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
+	switch opts.LVDSClock {
 	case 0:
 		l |= 0x00
 	case 1:
 		l |= 0x08
 	default:
-		return nil, nil, fmt.Errorf("invalid value for LVDS Clock. got %d, expected 0 or 1", s)
+		return nil, nil, fmt.Errorf("invalid value for LVDS Clock. got %d, expected 0 or 1", opts.LVDSClock)
 	}
 
-	s, err = flags.GetUint8("mclk-div")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	switch s {
+	switch opts.MCLKDiv {
 	case 0:
 		l |= 0x00
 	case 2:
@@ -418,97 +241,64 @@ func (adc *Adc7768) PowerMode(flags *flag.FlagSet) (tx []byte, rx []byte, err er
 	case 3:
 		l |= 0x03
 	default:
-		return nil, nil, fmt.Errorf("invalid value for MCLK division. got %d, expected 0, 2 or 3", s)
+		return nil, nil, fmt.Errorf("invalid value for MCLK division. got %d, expected 0, 2 or 3", opts.MCLKDiv)
 	}
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
+	return tx, rx, err
 
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
 }
 
-func (adc *Adc7768) GeneralConf(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
+type GeneralConfOpts struct {
+	Write        bool
+	RETimeEnable uint8
+	VcmPd        uint8
+	VcmVSelect   uint8
+}
+
+func (adc *Adc7768) GeneralConf(opts GeneralConfOpts, cs uint8) (tx []byte, rx []byte, err error) {
+	var h, l uint8
 	tx = make([]byte, 2)
 	rx = make([]byte, 2)
 
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
+	if !opts.Write {
 		h = h | 0x80
 	}
 
 	h |= GeneralConfiguration
 
-	s, err = flags.GetUint8("retime-en")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
+	switch opts.RETimeEnable {
 	case 0:
 		l |= 0x00
 	case 1:
 		l |= 0x10
 	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for retime-en, got %d", s)
+		return nil, nil, fmt.Errorf("expected 0 or 1 for retime-en, got %d", opts.RETimeEnable)
 	}
 
-	s, err = flags.GetUint8("vcm-pd")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
+	switch opts.VcmPd {
 	case 0:
 		l |= 0x00
 	case 1:
 		l |= 0x08
 	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for vcm-pd, got %d", s)
+		return nil, nil, fmt.Errorf("expected 0 or 1 for vcm-pd, got %d", opts.VcmPd)
 	}
 
 	// reserved bit(bit 3), should be 1
 	l |= 0x04
 
-	s, err = flags.GetUint8("vcm-vsel")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
+	switch opts.VcmVSelect {
 	case 0:
 		l |= 0x00
 	case 1:
@@ -518,94 +308,61 @@ func (adc *Adc7768) GeneralConf(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 	case 3:
 		l |= 0x03
 	default:
-		return nil, nil, fmt.Errorf("expected 0..3 for vcm-vsel, got %d", s)
+		return nil, nil, fmt.Errorf("expected 0..3 for vcm-vsel, got %d", opts.VcmVSelect)
 	}
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
+	return tx, rx, err
 
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
 }
 
-func (adc *Adc7768) DataControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
+type DataControlOpts struct {
+	Write      bool
+	SpiSync    uint8
+	SingleShot uint8
+	SpiReset   uint8
+}
+
+func (adc *Adc7768) DataControl(opts DataControlOpts, cs uint8) (tx []byte, rx []byte, err error) {
+	var h, l uint8
 	tx = make([]byte, 2)
 	rx = make([]byte, 2)
 
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
+	if opts.Write {
 		h = h | 0x80
 	}
 
 	h |= DataControl
 
-	s, err = flags.GetUint8("spi-sync")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
+	switch opts.SpiSync {
 	case 0:
 		l |= 0x00
 	case 1:
 		l |= 0x80
 	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for spi-sync, got %d", s)
+		return nil, nil, fmt.Errorf("expected 0 or 1 for spi-sync, got %d", opts.SpiSync)
 	}
 
-	s, err = flags.GetUint8("single-shot")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
+	switch opts.SingleShot {
 	case 0:
 		l |= 0x00
 	case 1:
 		l |= 0x10
 	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for single-shot, got %d", s)
+		return nil, nil, fmt.Errorf("expected 0 or 1 for single-shot, got %d", opts.SingleShot)
 	}
 
-	s, err = flags.GetUint8("spi-reset")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
+	switch opts.SpiReset {
 	case 0:
 		l |= 0x00
 	case 1:
@@ -615,68 +372,41 @@ func (adc *Adc7768) DataControl(flags *flag.FlagSet) (tx []byte, rx []byte, err 
 	case 3:
 		l |= 0x03
 	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for spi-sync, got %d", s)
+		return nil, nil, fmt.Errorf("expected 0 or 1 for spi-sync, got %d", opts.SpiReset)
 	}
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
+	return tx, rx, err
 }
 
-func (adc *Adc7768) InterfaceConf(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
+type InterfaceConfOpts struct {
+	Write     bool
+	CRCSelect uint8
+	DclkDiv   uint8
+}
+
+func (adc *Adc7768) InterfaceConf(opts InterfaceConfOpts, cs uint8) (tx []byte, rx []byte, err error) {
+	var h, l uint8
 	tx = make([]byte, 2)
 	rx = make([]byte, 2)
 
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
+	if !opts.Write {
 		h = h | 0x80
 	}
 
 	h |= InterfaceConfiguration
 
-	s, err = flags.GetUint8("crc-sel")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
+	switch opts.CRCSelect {
 	case 0:
 		l |= 0x00
 	case 1:
@@ -686,14 +416,10 @@ func (adc *Adc7768) InterfaceConf(flags *flag.FlagSet) (tx []byte, rx []byte, er
 	case 3:
 		l |= 0x30
 	default:
-		return nil, nil, fmt.Errorf("expected 0..3 for crc-sel, got %d", s)
+		return nil, nil, fmt.Errorf("expected 0..3 for crc-sel, got %d", opts.CRCSelect)
 	}
 
-	s, err = flags.GetUint8("dclk-div")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
+	switch opts.DclkDiv {
 	case 0:
 		l |= 0x00
 	case 1:
@@ -703,112 +429,63 @@ func (adc *Adc7768) InterfaceConf(flags *flag.FlagSet) (tx []byte, rx []byte, er
 	case 3:
 		l |= 0x03
 	default:
-		return nil, nil, fmt.Errorf("expected 0..3 for dclk-div, got %d", s)
+		return nil, nil, fmt.Errorf("expected 0..3 for dclk-div, got %d", opts.DclkDiv)
 	}
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
+	return tx, rx, err
 }
 
-func (adc *Adc7768) BISTControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
+type BISTControlOpts struct {
+	Write        bool
+	RamBISTStart uint8
+}
+
+func (adc *Adc7768) BISTControl(opts BISTControlOpts, cs uint8) (tx []byte, rx []byte, err error) {
+	var h, l uint8
 	tx = make([]byte, 2)
 	rx = make([]byte, 2)
 
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
+	if !opts.Write {
 		h = h | 0x80
 	}
 
 	h |= BISTControl
 
-	s, err = flags.GetUint8("ram-bist-start")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
+	switch opts.RamBISTStart {
 	case 0:
 		l |= 0x00
 	case 1:
 		l |= 0x01
 	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ram-bist-start, got %d", s)
+		return nil, nil, fmt.Errorf("expected 0 or 1 for ram-bist-start, got %d", opts.RamBISTStart)
 	}
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
+	return tx, rx, err
 }
 
-func (adc *Adc7768) DeviceStatus(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) DeviceStatus(cs uint8) (tx []byte, rx []byte, err error) {
 	var (
 		h, l uint8
 	)
@@ -820,40 +497,19 @@ func (adc *Adc7768) DeviceStatus(flags *flag.FlagSet) (tx []byte, rx []byte, err
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
+	return tx, rx, err
 }
 
-func (adc *Adc7768) RevisionID(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) RevisionID(cs uint8) (tx []byte, rx []byte, err error) {
 	var (
 		h, l uint8
 	)
@@ -865,291 +521,111 @@ func (adc *Adc7768) RevisionID(flags *flag.FlagSet) (tx []byte, rx []byte, err e
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
+	return tx, rx, err
 }
 
-func (adc *Adc7768) GPIOControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
+type GPIOControlOpts struct {
+	Write       bool
+	UGpioEnable uint8
+	GPIO        [5]uint8
+}
+
+func (adc *Adc7768) GPIOControl(opts GPIOControlOpts, cs uint8) (tx []byte, rx []byte, err error) {
+	var h, l uint8
 	tx = make([]byte, 2)
 	rx = make([]byte, 2)
 
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
+	if !opts.Write {
 		h = h | 0x80
 	}
 
 	h |= GPIOControl
 
-	s, err = flags.GetUint8("ugpio-en")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
+	switch opts.UGpioEnable {
 	case 0:
 		l |= 0x00
 	case 1:
 		l |= 0x80
 	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ugpio-en, got %d", s)
+		return nil, nil, fmt.Errorf("expected 0 or 1 for ugpio-en, got %d", opts.UGpioEnable)
 	}
 
-	s, err = flags.GetUint8("gpio4")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x10
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for gpio4, got %d", s)
-	}
-
-	s, err = flags.GetUint8("gpio3")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x08
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for gpio3, got %d", s)
-	}
-
-	s, err = flags.GetUint8("gpio2")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x04
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for gpio2, got %d", s)
-	}
-
-	s, err = flags.GetUint8("gpio1")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x02
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for gpio1, got %d", s)
-	}
-
-	s, err = flags.GetUint8("gpio0")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x01
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for gpio0, got %d", s)
+	for i, u := range opts.GPIO {
+		switch u {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x01 << i
+		default:
+			return nil, nil, fmt.Errorf("expected 0 or 1 for gpio%d, got %d", i, u)
+		}
 	}
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
+	return tx, rx, err
 }
 
-func (adc *Adc7768) GPIOWriteData(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
+type GPIOWriteDataOpts struct {
+	Write bool
+	GPIO  [5]uint8
+}
+
+func (adc *Adc7768) GPIOWriteData(opts GPIOWriteDataOpts, cs uint8) (tx []byte, rx []byte, err error) {
+	var h, l uint8
 	tx = make([]byte, 2)
 	rx = make([]byte, 2)
 
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
+	if !opts.Write {
 		h = h | 0x80
 	}
 
 	h |= GPIOWriteData
 
-	s, err = flags.GetUint8("gpio4")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x10
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for gpio4, got %d", s)
-	}
-
-	s, err = flags.GetUint8("gpio3")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x08
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for gpio3, got %d", s)
-	}
-
-	s, err = flags.GetUint8("gpio2")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x04
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for gpio2, got %d", s)
-	}
-
-	s, err = flags.GetUint8("gpio1")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x02
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for gpio1, got %d", s)
-	}
-
-	s, err = flags.GetUint8("gpio0")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x01
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for gpio0, got %d", s)
+	for i, u := range opts.GPIO {
+		switch u {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x01 << i
+		default:
+			return nil, nil, fmt.Errorf("expected 0 or 1 for gpio%d, got %d", i, u)
+		}
 	}
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
+	return tx, rx, err
 }
 
-func (adc *Adc7768) GPIOReadData(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
+func (adc *Adc7768) GPIOReadData(cs uint8) (tx []byte, rx []byte, err error) {
 	var (
 		h, l uint8
 	)
@@ -1161,2273 +637,358 @@ func (adc *Adc7768) GPIOReadData(flags *flag.FlagSet) (tx []byte, rx []byte, err
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
+	return tx, rx, err
 }
 
-func (adc *Adc7768) PrechargeBuffer1(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
+type PreChargeBufferOpts struct {
+	Write            bool
+	ChPositiveEnable [4]uint8
+	ChNegativeEnable [4]uint8
+}
+
+func (adc *Adc7768) PrechargeBuffer1(opts PreChargeBufferOpts, cs uint8) (tx []byte, rx []byte, err error) {
+	var h, l uint8
 	tx = make([]byte, 2)
 	rx = make([]byte, 2)
 
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
+	if !opts.Write {
 		h = h | 0x80
 	}
 
 	h |= PrechargeBuffer1
 
-	s, err = flags.GetUint8("ch1-neg")
-	if err != nil {
-		return nil, nil, err
+	for i, u := range opts.ChPositiveEnable {
+		switch u {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x01 << (i * 2)
+		default:
+			return nil, nil, fmt.Errorf("expected 0 or 1 for ch%d-pos, got %d", i, u)
+		}
 	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x08
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch1-neg, got %d", s)
-	}
-
-	s, err = flags.GetUint8("ch1-pos")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x04
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch1-pos, got %d", s)
-	}
-
-	s, err = flags.GetUint8("ch0-neg")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x02
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch0-neg, got %d", s)
-	}
-
-	s, err = flags.GetUint8("ch0-pos")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x01
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch0-pos, got %d", s)
+	for i, u := range opts.ChNegativeEnable {
+		switch u {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x02 << (i * 2)
+		default:
+			return nil, nil, fmt.Errorf("expected 0 or 1 for ch%d-neg, got %d", i, u)
+		}
 	}
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
+	return tx, rx, err
 }
 
-func (adc *Adc7768) PrechargeBuffer2(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
+func (adc *Adc7768) PrechargeBuffer2(opts PreChargeBufferOpts, cs uint8) (tx []byte, rx []byte, err error) {
+	var h, l uint8
 	tx = make([]byte, 2)
 	rx = make([]byte, 2)
 
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
+	if !opts.Write {
 		h = h | 0x80
 	}
 
 	h |= PrechargeBuffer2
 
-	s, err = flags.GetUint8("ch1-neg")
-	if err != nil {
-		return nil, nil, err
+	for i, u := range opts.ChPositiveEnable {
+		switch u {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x01 << (i * 2)
+		default:
+			return nil, nil, fmt.Errorf("expected 0 or 1 for ch%d-pos, got %d", i+4, u)
+		}
 	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x08
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch1-neg, got %d", s)
-	}
-
-	s, err = flags.GetUint8("ch1-pos")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x04
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch1-pos, got %d", s)
-	}
-
-	s, err = flags.GetUint8("ch0-neg")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x02
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch0-neg, got %d", s)
-	}
-
-	s, err = flags.GetUint8("ch0-pos")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x01
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch0-pos, got %d", s)
+	for i, u := range opts.ChNegativeEnable {
+		switch u {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x02 << (i * 2)
+		default:
+			return nil, nil, fmt.Errorf("expected 0 or 1 for ch%d-neg, got %d", i+4, u)
+		}
 	}
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
+	return tx, rx, err
 }
 
-func (adc *Adc7768) PositiveRefPrechargeBuf(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
+type ReferencePrechargeBufOpts struct {
+	Write    bool
+	Channels [8]uint8
+}
+
+func (adc *Adc7768) PositiveRefPrechargeBuf(opts ReferencePrechargeBufOpts, cs uint8) (tx []byte, rx []byte, err error) {
+	var h, l uint8
 	tx = make([]byte, 2)
 	rx = make([]byte, 2)
 
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
+	if !opts.Write {
 		h = h | 0x80
 	}
 
 	h |= PositiveReferencePrechargeBuffer
 
-	s, err = flags.GetUint8("ch3")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x20
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch3, got %d", s)
-	}
-
-	s, err = flags.GetUint8("ch2")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x20
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch3, got %d", s)
-	}
-
-	s, err = flags.GetUint8("ch1")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x20
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch3, got %d", s)
-	}
-
-	s, err = flags.GetUint8("ch0")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x20
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch3, got %d", s)
+	for i, channel := range opts.Channels {
+		switch channel {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x01 << i
+		default:
+			return nil, nil, fmt.Errorf("expected 0 or 1 for ch%d, got %d", i, channel)
+		}
 	}
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
+	return tx, rx, err
 }
 
-func (adc *Adc7768) NegativeRefPrechargeBuf(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
+func (adc *Adc7768) NegativeRefPrechargeBuf(opts ReferencePrechargeBufOpts, cs uint8) (tx []byte, rx []byte, err error) {
+	var h, l uint8
 	tx = make([]byte, 2)
 	rx = make([]byte, 2)
 
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
+	if !opts.Write {
 		h = h | 0x80
 	}
 
 	h |= NegativeReferencePrechargeBuffer
 
-	s, err = flags.GetUint8("ch3")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x20
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch3, got %d", s)
-	}
-
-	s, err = flags.GetUint8("ch2")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x20
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch3, got %d", s)
-	}
-
-	s, err = flags.GetUint8("ch1")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x20
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch3, got %d", s)
-	}
-
-	s, err = flags.GetUint8("ch0")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x00
-	case 1:
-		l |= 0x20
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch3, got %d", s)
+	for i, channel := range opts.Channels {
+		switch channel {
+		case 0:
+			l |= 0x00
+		case 1:
+			l |= 0x01 << i
+		default:
+			return nil, nil, fmt.Errorf("expected 0 or 1 for ch%d, got %d", i, channel)
+		}
 	}
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
+	return tx, rx, err
 }
 
-func (adc *Adc7768) Ch0OffsetMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
+type ChannelOffsetOpts struct {
+	Write   bool
+	Channel uint8
 
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
+	// MSB, Mid, LSB
+	Offset [3]int8
+}
+
+func (adc Adc7768) ChannelOffset(opts ChannelOffsetOpts, cs uint8) (err error) {
+	var h uint8
+	tx := make([]byte, 2)
+	rx := make([]byte, 2)
+
+	if !opts.Write {
 		h = h | 0x80
 	}
-
-	h |= Ch0OffsetMSB
-
-	s, err = flags.GetUint8("MSB")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
+	if opts.Channel < 0 || opts.Channel > 7 {
+		return fmt.Errorf("invalid channel: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
+	register := Ch0OffsetMSB + (opts.Channel * 3)
+	for i := uint8(0); i < 3; i++ {
+		h |= register + i
+		tx = []byte{h, uint8(opts.Offset[i])}
 
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
+		err = adc.Write(tx, cs)
 		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
+			return fmt.Errorf("write error: %s", err)
 		}
-		err = adc.Read(rx, adcSelect)
+		err = adc.Read(rx, cs)
 		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
+			return fmt.Errorf("read error: %s", err)
 		}
-
-		return tx, rx, err
 	}
+	return err
 }
 
-func (adc *Adc7768) Ch0OffsetMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
+type ChannelGainOpts struct {
+	Write   bool
+	Channel uint8
 
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
+	// MSB, Mid, LSB
+	Offset [3]uint8
+}
+
+func (adc Adc7768) ChannelGain(opts ChannelGainOpts, cs uint8) (err error) {
+	var h uint8
+	tx := make([]byte, 2)
+	rx := make([]byte, 2)
+
+	if !opts.Write {
 		h = h | 0x80
 	}
-
-	h |= Ch0OffsetMid
-
-	s, err = flags.GetUint8("MSB")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
+	if opts.Channel < 0 || opts.Channel > 7 {
+		return fmt.Errorf("invalid channel: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
+	register := Ch0GainMSB + (opts.Channel * 3)
+	for i := uint8(0); i < 3; i++ {
+		h |= register + i
+		tx = []byte{h, opts.Offset[i]}
 
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
+		err = adc.Write(tx, cs)
 		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
+			return fmt.Errorf("write error: %s", err)
 		}
-		err = adc.Read(rx, adcSelect)
+		err = adc.Read(rx, cs)
 		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
+			return fmt.Errorf("read error: %s", err)
 		}
-
-		return tx, rx, err
 	}
+	return err
 }
 
-func (adc *Adc7768) Ch0OffsetLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
+type ChannelSyncOffsetOpts struct {
+	Write   bool
+	Channel uint8
+	Offset  uint8
+}
 
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
+func (adc Adc7768) ChannelSyncOffset(opts ChannelSyncOffsetOpts, cs uint8) (err error) {
+	var h uint8
+	tx := make([]byte, 2)
+	rx := make([]byte, 2)
+
+	if !opts.Write {
 		h = h | 0x80
 	}
+	if opts.Channel < 0 || opts.Channel > 7 {
+		return fmt.Errorf("invalid channel: %s", err)
+	}
 
-	h |= Ch0OffsetLSB
+	h |= Ch0SyncOffset + opts.Channel
+	tx = []byte{h, opts.Offset}
 
-	s, err = flags.GetUint8("MSB")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return fmt.Errorf("write error: %s", err)
 	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Read(rx, cs)
 	if err != nil {
-		return nil, nil, err
+		return fmt.Errorf("read error: %s", err)
 	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
+	return err
 }
 
-func (adc *Adc7768) Ch1OffsetMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
+type DiagnosticRXOpts struct {
+	Write    bool
+	Channels [8]uint8
+}
+
+func (adc *Adc7768) DiagnosticRX(opts DiagnosticRXOpts, cs uint8) (tx []byte, rx []byte, err error) {
+	var h, l uint8
 	tx = make([]byte, 2)
 	rx = make([]byte, 2)
 
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch1OffsetMSB
-
-	s, err = flags.GetUint8("MSB")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch1OffsetMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch1OffsetMid
-
-	s, err = flags.GetUint8("MSB")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch1OffsetLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch1OffsetLSB
-
-	s, err = flags.GetUint8("MSB")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch2OffsetMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch2OffsetMSB
-
-	s, err = flags.GetUint8("MSB")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch2OffsetMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch2OffsetMid
-
-	s, err = flags.GetUint8("MSB")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch2OffsetLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch2OffsetLSB
-
-	s, err = flags.GetUint8("MSB")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch3OffsetMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch3OffsetMSB
-
-	s, err = flags.GetUint8("MSB")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch3OffsetMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch3OffsetMid
-
-	s, err = flags.GetUint8("MSB")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch3OffsetLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch3OffsetLSB
-
-	s, err = flags.GetUint8("MSB")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch0GainMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch0GainMSB
-
-	s, err = flags.GetUint8("MSB")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch0GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch0GainMid
-
-	s, err = flags.GetUint8("Mid")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch0GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch0GainLSB
-
-	s, err = flags.GetUint8("LSB")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch1GainMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch1GainMSB
-
-	s, err = flags.GetUint8("MSB")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch1GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch1GainMid
-
-	s, err = flags.GetUint8("Mid")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch1GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch1GainLSB
-
-	s, err = flags.GetUint8("LSB")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch2GainMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch2GainMSB
-
-	s, err = flags.GetUint8("MSB")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch2GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch2GainMid
-
-	s, err = flags.GetUint8("Mid")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch2GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch2GainLSB
-
-	s, err = flags.GetUint8("LSB")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch3GainMSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch3GainMSB
-
-	s, err = flags.GetUint8("MSB")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch3GainMid(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch3GainMid
-
-	s, err = flags.GetUint8("Mid")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch3GainLSB(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch3GainLSB
-
-	s, err = flags.GetUint8("LSB")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch0SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch0SyncOffset
-
-	s, err = flags.GetUint8("offset")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch1SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch1SyncOffset
-
-	s, err = flags.GetUint8("offset")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch2SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch2SyncOffset
-
-	s, err = flags.GetUint8("offset")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) Ch3SyncOffset(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
-		h = h | 0x80
-	}
-
-	h |= Ch3SyncOffset
-
-	s, err = flags.GetUint8("offset")
-	if err != nil {
-		return nil, nil, err
-	}
-	l |= s
-
-	tx = []byte{h, l}
-
-	adcSelect, err := flags.GetUint8("adc")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
-}
-
-func (adc *Adc7768) DiagnosticRX(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
-	tx = make([]byte, 2)
-	rx = make([]byte, 2)
-
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
+	if !opts.Write {
 		h = h | 0x80
 	}
 
 	h |= DiagnosticRX
 
-	s, err = flags.GetUint8("ch3")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x0
-	case 1:
-		l |= 0x20
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch3, got %d", s)
-	}
-
-	s, err = flags.GetUint8("ch2")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x0
-	case 1:
-		l |= 0x10
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch2, got %d", s)
-	}
-
-	s, err = flags.GetUint8("ch1")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x0
-	case 1:
-		l |= 0x02
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch1, got %d", s)
-	}
-
-	s, err = flags.GetUint8("ch0")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
-	case 0:
-		l |= 0x0
-	case 1:
-		l |= 0x01
-	default:
-		return nil, nil, fmt.Errorf("expected 0 or 1 for ch3, got %d", s)
+	for i, channel := range opts.Channels {
+		switch channel {
+		case 0:
+			l |= 0x0
+		case 1:
+			l |= 0x01 << i
+		default:
+			return nil, nil, fmt.Errorf("expected 0 or 1 for ch%d, got %d", i, channel)
+		}
 	}
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
+	return tx, rx, err
 }
 
-func (adc *Adc7768) DiagnosticMuxControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
+type DiagnosticMuxControlOpts struct {
+	Write      bool
+	GrpbSelect uint8
+	GrpaSelect uint8
+}
+
+func (adc *Adc7768) DiagnosticMuxControl(opts DiagnosticMuxControlOpts, cs uint8) (tx []byte, rx []byte, err error) {
+	var h, l uint8
 	tx = make([]byte, 2)
 	rx = make([]byte, 2)
 
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
+	if !opts.Write {
 		h = h | 0x80
 	}
 
 	h |= DiagnosticMuxControl
 
-	s, err = flags.GetUint8("grpb-sel")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
+	switch opts.GrpbSelect {
 	case 0:
 		l |= 0x00
 	case 3:
@@ -3437,14 +998,10 @@ func (adc *Adc7768) DiagnosticMuxControl(flags *flag.FlagSet) (tx []byte, rx []b
 	case 5:
 		l |= 0x50
 	default:
-		return nil, nil, fmt.Errorf("expected 0, 3, 4 or 5 for GRPB-SEL, got %d", s)
+		return nil, nil, fmt.Errorf("expected 0, 3, 4 or 5 for GRPB-SEL, got %d", opts.GrpbSelect)
 	}
 
-	s, err = flags.GetUint8("grpa-sel")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
+	switch opts.GrpaSelect {
 	case 0:
 		l |= 0x00
 	case 3:
@@ -3454,69 +1011,41 @@ func (adc *Adc7768) DiagnosticMuxControl(flags *flag.FlagSet) (tx []byte, rx []b
 	case 5:
 		l |= 0x05
 	default:
-		return nil, nil, fmt.Errorf("expected 0, 3, 4 or 5 for GRPA-SEL, got %d", s)
+		return nil, nil, fmt.Errorf("expected 0, 3, 4 or 5 for GRPA-SEL, got %d", opts.GrpaSelect)
 	}
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
+	return tx, rx, err
 }
 
-func (adc *Adc7768) DiagnosticDelayControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
+type ModulatorDelayControlOpts struct {
+	Write    bool
+	ModDelay uint8
+}
+
+func (adc *Adc7768) ModulatorDelayControl(opts ModulatorDelayControlOpts, cs uint8) (tx []byte, rx []byte, err error) {
+	var h, l uint8
 	tx = make([]byte, 2)
 	rx = make([]byte, 2)
 
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
+	if !opts.Write {
 		h = h | 0x80
 	}
 
-	h |= DiagnosticMuxControl
+	h |= ModulatorDelayControl
 	l = 0x2
 
-	s, err = flags.GetUint8("mod-delay")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
+	switch opts.ModDelay {
 	case 0:
 		l |= 0x00
 	case 1:
@@ -3526,122 +1055,70 @@ func (adc *Adc7768) DiagnosticDelayControl(flags *flag.FlagSet) (tx []byte, rx [
 	case 3:
 		l |= 0x0c
 	default:
-		return nil, nil, fmt.Errorf("expected 0..3, for mod-delay, got %d", s)
+		return nil, nil, fmt.Errorf("expected 0..3, for mod-delay, got %d", opts.ModDelay)
 	}
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
+	return tx, rx, err
 }
 
-func (adc *Adc7768) ChopControl(flags *flag.FlagSet) (tx []byte, rx []byte, err error) {
-	var (
-		h, l  uint8
-		s     uint8
-		write bool
-	)
+type ChopControlOpts struct {
+	Write    bool
+	GrpaChop uint8
+	GrpbChop uint8
+}
+
+func (adc *Adc7768) ChopControl(opts ChopControlOpts, cs uint8) (tx []byte, rx []byte, err error) {
+	var h, l uint8
 	tx = make([]byte, 2)
 	rx = make([]byte, 2)
 
-	write, err = flags.GetBool("write")
-	if err != nil {
-		return nil, nil, err
-	}
-	if !write {
+	if !opts.Write {
 		h = h | 0x80
 	}
 
 	h |= ChopControl
 
-	s, err = flags.GetUint8("grpa-sel")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
+	switch opts.GrpaChop {
 	case 1:
 		l |= 0x04
 	case 2:
 		l |= 0x08
 	default:
-		return nil, nil, fmt.Errorf("expected 1 or 2 for GRPA-SEL, got %d", s)
+		return nil, nil, fmt.Errorf("expected 1 or 2 for GRPA-CHOP, got %d", opts.GrpaChop)
 	}
 
-	s, err = flags.GetUint8("grpb-sel")
-	if err != nil {
-		return nil, nil, err
-	}
-	switch s {
+	switch opts.GrpbChop {
 	case 1:
 		l |= 0x01
 	case 2:
 		l |= 0x02
 	default:
-		return nil, nil, fmt.Errorf("expected 1 or 2 for GRPB-SEL, got %d", s)
+		return nil, nil, fmt.Errorf("expected 1 or 2 for GRPB-Chop, got %d", opts.GrpaChop)
 	}
 
 	tx = []byte{h, l}
 
-	adcSelect, err := flags.GetUint8("adc")
+	err = adc.Write(tx, cs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("write error: %s", err)
+	}
+	err = adc.Read(rx, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read error: %s", err)
 	}
 
-	if adcSelect == 0 {
-		for i := uint8(1); i < 10; i++ {
-			err = adc.Write(tx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("write error: %s", err)
-			}
-			err = adc.Read(rx, i)
-			if err != nil {
-				return nil, nil, fmt.Errorf("read error: %s", err)
-			}
-
-			log.Println(tx, rx, err)
-		}
-		return tx, rx, err
-	} else {
-		err = adc.Write(tx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("write error: %s", err)
-		}
-		err = adc.Read(rx, adcSelect)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read error: %s", err)
-		}
-
-		return tx, rx, err
-	}
+	return tx, rx, err
 }
 
 func (adc *Adc7768) HardReset(_ *flag.FlagSet) (_ []byte, _ []byte, err error) {

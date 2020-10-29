@@ -9,7 +9,6 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/go-cmd/cmd"
 	"github.com/gorilla/websocket"
@@ -58,6 +57,13 @@ var connectedUSB = map[int]usbDevice{}
 //}
 func NewAPI() *iris.Application {
 	api := iris.Default()
+	if debug {
+		api.Any("/api/{path:path}", func(ctx iris.Context) {
+			r := ctx.Request()
+			r.URL.Path = strings.Replace(r.URL.Path, "/api", "", 1)
+			ctx.Application().ServeHTTPC(ctx)
+		})
+	}
 	api.Options("/login", loginOptionsHandler)
 
 	api.Use(cors.AllowAll())
@@ -322,15 +328,10 @@ func readDataHandler(ctx iris.Context) {
 	}
 	b, _ := ioutil.ReadAll(f)
 
-	// w, _ := conn.NextWriter(websocket.BinaryMessage)
-	now := time.Now()
 	for i := 0; i < len(b); i += 80 {
 		_ = conn.WriteMessage(websocket.BinaryMessage, b[i:i+80])
-		//time.Sleep(100*time.Millisecond)
 	}
-	time.Sleep(1 * time.Second)
 	_ = conn.Close()
-	log.Println(time.Since(now), len(b)/80)
 }
 
 func readDataPostHandler(ctx iris.Context) {

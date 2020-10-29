@@ -29,6 +29,15 @@ var serverCmd = &cobra.Command{
 			}
 			log.Println("hardware init SUCCESSFUL")
 		}
+
+		wd, _ := os.Getwd()
+		if err := os.MkdirAll(path.Join(wd, "data"), os.ModeDir|0755); err != nil {
+			log.Fatalf("failed to create directory: %v", err)
+		}
+		dataFS = afero.NewBasePathFs(afero.NewOsFs(), path.Join(wd, "data"))
+		memFS = afero.NewMemMapFs()
+		_, _ = memFS.Create("/data.raw")
+
 		api := NewAPI()
 		port := "9090"
 		if os.Getenv("PORT") != "" {
@@ -71,16 +80,6 @@ func HardwareInitSeq() error {
 		return fmt.Errorf("failed to enable MCLK: %v", err)
 	}
 	return nil
-}
-
-func init() {
-	wd, _ := os.Getwd()
-	if err := os.MkdirAll(path.Join(wd, "data"), os.ModeDir|0755); err != nil {
-		log.Fatalf("failed to create directory: %v", err)
-	}
-	dataFS = afero.NewBasePathFs(afero.NewOsFs(), path.Join(wd, "data"))
-	memFS = afero.NewMemMapFs()
-	_, _ = memFS.Create("/data.raw")
 }
 
 func init() {
