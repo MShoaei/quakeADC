@@ -22,6 +22,7 @@ var serverCmd = &cobra.Command{
 	Use:   "server",
 	Short: "launch a server to execute command",
 	Long:  `launch a server which listens on port 9090 and executes commands.`,
+	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		if runtime.GOARCH == "arm" {
 			if err := HardwareInitSeq(); err != nil {
@@ -62,23 +63,28 @@ func HardwareInitSeq() error {
 	xmega.ReadID(conn)
 	time.Sleep(100 * time.Millisecond)
 
-	if err := xmega.StatusLED(conn, xmega.On); err != nil {
-		return fmt.Errorf("failed to turn on LED: %v", err)
-	}
-	time.Sleep(100 * time.Millisecond)
-
 	if err := xmega.ResetAllADC(conn); err != nil {
 		return fmt.Errorf("failed to reset ADCs: %v", err)
 	}
 	time.Sleep(100 * time.Millisecond)
 
 	//TODO: Multi logic analyzer is not implemented. The function below SHOULD be implemented.
-	//xmega.DetectLogicConnString(conn)
-	//time.Sleep(100 * time.Millisecond)
+	list ,err := xmega.DetectLogicConnString(conn)
+	if err != nil {
+		return fmt.Errorf("failed to detect logic analyzers conn string: %v", err)
+	}
+	driverConnDigits = list
+	time.Sleep(100 * time.Millisecond)
 
 	if err := xmega.EnableMCLK(conn); err != nil {
 		return fmt.Errorf("failed to enable MCLK: %v", err)
 	}
+
+	if err := xmega.StatusLED(conn, xmega.On); err != nil {
+		return fmt.Errorf("failed to turn on LED: %v", err)
+	}
+	time.Sleep(100 * time.Millisecond)
+
 	return nil
 }
 

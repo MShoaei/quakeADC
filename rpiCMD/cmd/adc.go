@@ -24,6 +24,7 @@ func newAdcChStandbyCommand() *cobra.Command {
 		Use:   "ChStandby",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			tx, rx, err := adcConnection.ChStandby(options, chipSelect)
 			if err != nil {
@@ -58,6 +59,7 @@ func newAdcChModeACommand() *cobra.Command {
 	cmd := &cobra.Command{Use: "ChModeA",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			tx, rx, err := adcConnection.ChModeA(options, chipSelect)
 			if err != nil {
@@ -86,6 +88,7 @@ func newAdcChModeBCommand() *cobra.Command {
 	cmd := &cobra.Command{Use: "ChModeB",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				err error
@@ -121,6 +124,7 @@ func newAdcChModeSelectCommand() *cobra.Command {
 		Use:   "ChModeSel",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				err error
@@ -162,6 +166,7 @@ func newAdcPowerModeCommand() *cobra.Command {
 		Use:   "PowerMode",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				err error
@@ -199,6 +204,7 @@ func newAdcGeneralConfigurationCommand() *cobra.Command {
 		Use:   "GeneralConf",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				err error
@@ -234,6 +240,7 @@ func newAdcDataControlCommand() *cobra.Command {
 		Use:   "DataControl",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				err error
@@ -269,6 +276,7 @@ func newAdcInterfaceConfigurationCommand() *cobra.Command {
 		Use:   "InterfaceConf",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				err error
@@ -303,6 +311,7 @@ func newAdcBISTControlCommand() *cobra.Command {
 		Use:   "BISTControl",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				err error
@@ -335,6 +344,7 @@ func newAdcDeviceStatusCommand() *cobra.Command {
 		Use:   "DeviceStatus",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				err error
@@ -362,6 +372,7 @@ func newAdcRevisionIDCommand() *cobra.Command {
 		Use:   "RevisionID",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				err error
@@ -390,6 +401,7 @@ func newAdcGPIOControlCommand() *cobra.Command {
 		Use:   "GPIOControl",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				err error
@@ -429,6 +441,7 @@ func newAdcGPIOWriteDataCommand() *cobra.Command {
 		Use:   "GPIOWriteData",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				err error
@@ -465,6 +478,7 @@ func newAdcGPIOReadDataCommand() *cobra.Command {
 		Use:   "GPIOReadData",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				err error
@@ -491,6 +505,7 @@ func newAdcPrechargeBuffer1Command() *cobra.Command {
 		Use:   "PrechargeBuffer1",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				err error
@@ -530,6 +545,7 @@ func newAdcPrechargeBuffer2Command() *cobra.Command {
 		Use:   "PrechargeBuffer2",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				err error
@@ -647,6 +663,7 @@ func newAdcChannelOffsetCommand() *cobra.Command {
 		Use:   "ChOffset",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return adcConnection.ChannelOffset(options, chipSelect)
 		},
@@ -668,6 +685,7 @@ func newAdcChGainCommandCommand() *cobra.Command {
 		Use:   "ChGain",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return adcConnection.ChannelGain(options, chipSelect)
 		},
@@ -690,6 +708,7 @@ func newAdcChannelSyncOffsetCommand() *cobra.Command {
 		Use:   "Ch0SyncOffset",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return adcConnection.ChannelSyncOffset(options, chipSelect)
 		},
@@ -710,6 +729,7 @@ func newAdcDiagnosticRXCommand() *cobra.Command {
 		Use:   "DiagnosticRX",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				err error
@@ -749,6 +769,7 @@ func newAdcDiagnosticMuxControlCommand() *cobra.Command {
 		Use:   "DiagnosticMuxControl",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				err error
@@ -782,6 +803,7 @@ func newAdcModulatorDelayControlCommand() *cobra.Command {
 		Use:   "ModulatorDelayControl",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				err error
@@ -814,6 +836,7 @@ func newAdcChopControlCommand() *cobra.Command {
 		Use:   "ChopControl",
 		Short: "",
 		Long:  "",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				err error

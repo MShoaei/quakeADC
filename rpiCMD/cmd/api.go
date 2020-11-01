@@ -70,29 +70,6 @@ func NewAPI() *iris.Application {
 
 	api.Get("/", homeHandler)
 
-	api.Get("/tree", func(ctx iris.Context) {
-		list, err := afero.ReadDir(dataFS, "/")
-		if err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
-				"error": "invalid path parameter in url",
-			})
-			return
-		}
-		type item struct {
-			Name string `json:"name"`
-			Dir  bool   `json:"dir"`
-		}
-		fd := make([]item, 0)
-		for _, info := range list {
-			fd = append(fd, item{Name: info.Name(), Dir: info.IsDir()})
-		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
-			"directory": "/",
-			"items":     fd,
-		})
-	})
 	api.Get("/tree/{dir:path}", treeHandler)
 
 	api.Get("/plot", readDataHandler)
@@ -108,8 +85,12 @@ func NewAPI() *iris.Application {
 	api.Patch("/update", updateStack)
 
 	api.Get("/usb/all", getAllUSB)
-
+	api.Post("/rpi/shutdown", shutdownSequenceHandler)
 	return api
+}
+
+func shutdownSequenceHandler(ctx iris.Context) {
+
 }
 
 func plotHandler(ctx iris.Context) {
