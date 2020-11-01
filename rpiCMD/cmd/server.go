@@ -22,7 +22,7 @@ var serverCmd = &cobra.Command{
 	Use:   "server",
 	Short: "launch a server to execute command",
 	Long:  `launch a server which listens on port 9090 and executes commands.`,
-	Args: cobra.NoArgs,
+	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		if runtime.GOARCH == "arm" {
 			if err := HardwareInitSeq(); err != nil {
@@ -69,7 +69,7 @@ func HardwareInitSeq() error {
 	time.Sleep(100 * time.Millisecond)
 
 	//TODO: Multi logic analyzer is not implemented. The function below SHOULD be implemented.
-	list ,err := xmega.DetectLogicConnString(conn)
+	list, err := xmega.DetectLogicConnString(conn)
 	if err != nil {
 		return fmt.Errorf("failed to detect logic analyzers conn string: %v", err)
 	}

@@ -2,11 +2,12 @@ package xmega
 
 import (
 	"fmt"
-	"github.com/spf13/afero"
 	"log"
+	"os"
 	"time"
 
 	"github.com/MShoaei/quakeADC/driver"
+	"github.com/spf13/afero"
 	"gobot.io/x/gobot/drivers/spi"
 	"periph.io/x/periph/conn/gpio"
 	"periph.io/x/periph/host/bcm283x"
@@ -76,6 +77,7 @@ func EnableMCLK(conn spi.Connection) error {
 }
 
 func DetectLogicConnString(conn spi.Connection) (list []string, err error) {
+	var devices []os.FileInfo
 	var tx []byte
 	rx := make([]byte, 3)
 
@@ -85,9 +87,9 @@ func DetectLogicConnString(conn spi.Connection) (list []string, err error) {
 		return nil, fmt.Errorf("failed to reset all logic analyzers: %v", err)
 	}
 	_ = driver.DisableChipSelect(0)
-	time.Sleep(1*time.Second)
+	time.Sleep(1 * time.Second)
 
-	devices, err := afero.ReadDir(afero.NewOsFs(), "/dev/bus/usb/001/")
+	devices, err = afero.ReadDir(afero.NewOsFs(), "/dev/bus/usb/001/")
 	if err != nil {
 		return nil, fmt.Errorf("failed to read directory at /dev/bus/usb/001/: %v", err)
 	}
@@ -95,29 +97,43 @@ func DetectLogicConnString(conn spi.Connection) (list []string, err error) {
 	tx = []byte{uint8(0x01), uint8(0x02), 0}
 	_ = driver.EnableChipSelect(0)
 	if err = conn.Tx(tx, rx); err != nil {
-		return nil, fmt.Errorf("failed to reset all logic analyzers: %v", err)
+		return nil, fmt.Errorf("failed to enable logic 1: %v", err)
 	}
 	_ = driver.DisableChipSelect(0)
-	time.Sleep(1*time.Second)
+	time.Sleep(1 * time.Second)
+	devices, err = afero.ReadDir(afero.NewOsFs(), "/dev/bus/usb/001/")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read directory at /dev/bus/usb/001/: %v", err)
+	}
 	list = append(list, devices[len(devices)-1].Name())
 
 	tx = []byte{uint8(0x01), uint8(0x06), 0}
 	_ = driver.EnableChipSelect(0)
 	if err = conn.Tx(tx, rx); err != nil {
-		return nil, fmt.Errorf("failed to reset all logic analyzers: %v", err)
+		return nil, fmt.Errorf("failed to enable logic 2: %v", err)
 	}
 	_ = driver.DisableChipSelect(0)
-	time.Sleep(1*time.Second)
+	time.Sleep(1 * time.Second)
+	devices, err = afero.ReadDir(afero.NewOsFs(), "/dev/bus/usb/001/")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read directory at /dev/bus/usb/001/: %v", err)
+	}
 	list = append(list, devices[len(devices)-1].Name())
 
 	tx = []byte{uint8(0x01), uint8(0x0e), 0}
 	_ = driver.EnableChipSelect(0)
 	if err = conn.Tx(tx, rx); err != nil {
-		return nil, fmt.Errorf("failed to reset all logic analyzers: %v", err)
+		return nil, fmt.Errorf("failed to enable logic 3: %v", err)
 	}
 	_ = driver.DisableChipSelect(0)
-	time.Sleep(1*time.Second)
+	time.Sleep(1 * time.Second)
+	devices, err = afero.ReadDir(afero.NewOsFs(), "/dev/bus/usb/001/")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read directory at /dev/bus/usb/001/: %v", err)
+	}
 	list = append(list, devices[len(devices)-1].Name())
+
+	log.Printf("%#v", list)
 
 	return list, err
 }

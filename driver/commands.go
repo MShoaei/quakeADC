@@ -2,6 +2,7 @@ package driver
 
 import (
 	"fmt"
+
 	flag "github.com/spf13/pflag"
 )
 
@@ -21,9 +22,9 @@ func (adc *Adc7768) ChStandby(opts ChStandbyOpts, cs uint8) (tx []byte, rx []byt
 
 	h |= ChannelStandby
 
-	for i, enabled := range opts.Channels {
-		if enabled {
-			l |= 0x80 >> i
+	for i, standby := range opts.Channels {
+		if standby {
+			l |= 0x01 << i
 		}
 	}
 	tx = []byte{h, l}

@@ -2,11 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/MShoaei/quakeADC/driver"
 	"github.com/MShoaei/quakeADC/driver/xmega"
 	"github.com/spf13/cobra"
 	"gobot.io/x/gobot/drivers/spi"
-	"strconv"
 )
 
 // xmegaCmd represents the adc command

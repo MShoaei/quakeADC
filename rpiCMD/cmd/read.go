@@ -44,7 +44,7 @@ func execSigrokCLILive(duration int) {
 	w := bufio.NewWriterSize(dataFile, int(math.Ceil(float64(duration)/1000.0))*1024*1024)
 	c := exec.Command(
 		"sigrok-cli",
-		fmt.Sprintf("--driver=fx2lafw:conn=%s",driverConnDigits[0]), "-O", "binary", "--time", fmt.Sprintf("%d", duration), "--config", "samplerate=24m")
+		fmt.Sprintf("--driver=fx2lafw:conn=%s", driverConnDigits[0]), "-O", "binary", "--time", fmt.Sprintf("%d", duration), "--config", "samplerate=24m")
 
 	var err error
 	input, err = c.StdoutPipe()
@@ -95,7 +95,7 @@ var adcConvertCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalln(err)
 		}
-		stat,_:= os.Stat(inputFile)
+		stat, _ := os.Stat(inputFile)
 		buffer = make([]byte, stat.Size())
 		output, _ := cmd.Flags().GetString("of")
 		if output == "" {
