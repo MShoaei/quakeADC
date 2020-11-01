@@ -705,7 +705,7 @@ func newAdcChGainCommandCommand() *cobra.Command {
 func newAdcChannelSyncOffsetCommand() *cobra.Command {
 	options := driver.ChannelSyncOffsetOpts{}
 	cmd := &cobra.Command{
-		Use:   "Ch0SyncOffset",
+		Use:   "ChSyncOffset",
 		Short: "",
 		Long:  "",
 		Args: cobra.NoArgs,

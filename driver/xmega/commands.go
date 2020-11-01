@@ -2,12 +2,11 @@ package xmega
 
 import (
 	"fmt"
+	"github.com/spf13/afero"
 	"log"
-	"regexp"
 	"time"
 
 	"github.com/MShoaei/quakeADC/driver"
-	"github.com/go-cmd/cmd"
 	"gobot.io/x/gobot/drivers/spi"
 	"periph.io/x/periph/conn/gpio"
 	"periph.io/x/periph/host/bcm283x"
@@ -52,7 +51,7 @@ func StatusLED(conn spi.Connection, s status) error {
 
 func ResetAllADC(conn spi.Connection) error {
 	var tx []byte
-	tx = []byte{uint8(0x01), uint8(0x0f), 0}
+	tx = []byte{uint8(0x01), uint8(0x01), 0}
 	rx := make([]byte, 3)
 
 	_ = driver.EnableChipSelect(0)
@@ -79,7 +78,6 @@ func EnableMCLK(conn spi.Connection) error {
 func DetectLogicConnString(conn spi.Connection) (list []string, err error) {
 	var tx []byte
 	rx := make([]byte, 3)
-	connDigitRegex := regexp.MustCompile(`\d*\.\d*`)
 
 	tx = []byte{uint8(0x01), uint8(0x00), 0}
 	_ = driver.EnableChipSelect(0)
@@ -87,57 +85,39 @@ func DetectLogicConnString(conn spi.Connection) (list []string, err error) {
 		return nil, fmt.Errorf("failed to reset all logic analyzers: %v", err)
 	}
 	_ = driver.DisableChipSelect(0)
+	time.Sleep(1*time.Second)
 
-	tx = []byte{uint8(0x01), uint8(0x01), 0}
-	_ = driver.EnableChipSelect(0)
-	if err = conn.Tx(tx, rx); err != nil {
-		return nil, fmt.Errorf("detecting logic 1 failed: %v", err)
-	}
-	_ = driver.DisableChipSelect(0)
-
-	{
-		<-cmd.NewCmd("sigrok-cli", "--scan").Start()
-		time.Sleep(2 * time.Second)
-		status := <-cmd.NewCmd("sigrok-cli", "--scan").Start()
-		if len(status.Stdout) < 3 {
-			return nil, fmt.Errorf("looks like logic 2 is not connected")
-		}
-		list = append(list, connDigitRegex.FindString(status.Stdout[2]))
+	devices, err := afero.ReadDir(afero.NewOsFs(), "/dev/bus/usb/001/")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read directory at /dev/bus/usb/001/: %v", err)
 	}
 
 	tx = []byte{uint8(0x01), uint8(0x02), 0}
 	_ = driver.EnableChipSelect(0)
 	if err = conn.Tx(tx, rx); err != nil {
-		return nil, fmt.Errorf("detecting logic 2 failed: %v", err)
+		return nil, fmt.Errorf("failed to reset all logic analyzers: %v", err)
 	}
 	_ = driver.DisableChipSelect(0)
+	time.Sleep(1*time.Second)
+	list = append(list, devices[len(devices)-1].Name())
 
-	{
-		<-cmd.NewCmd("sigrok-cli", "--scan").Start()
-		time.Sleep(2 * time.Second)
-		status := <-cmd.NewCmd("sigrok-cli", "--scan").Start()
-		if len(status.Stdout) < 3 {
-			return nil, fmt.Errorf("looks like logic 3 is not connected")
-		}
-		list = append(list, connDigitRegex.FindString(status.Stdout[2]))
-	}
-
-	tx = []byte{uint8(0x01), uint8(0x04), 0}
+	tx = []byte{uint8(0x01), uint8(0x06), 0}
 	_ = driver.EnableChipSelect(0)
 	if err = conn.Tx(tx, rx); err != nil {
-		return nil, fmt.Errorf("detecting logic 3 failed: %v", err)
+		return nil, fmt.Errorf("failed to reset all logic analyzers: %v", err)
 	}
 	_ = driver.DisableChipSelect(0)
+	time.Sleep(1*time.Second)
+	list = append(list, devices[len(devices)-1].Name())
 
-	{
-		<-cmd.NewCmd("sigrok-cli", "--scan").Start()
-		time.Sleep(2 * time.Second)
-		status := <-cmd.NewCmd("sigrok-cli", "--scan").Start()
-		if len(status.Stdout) < 3 {
-			return nil, fmt.Errorf("looks like logic 3 is not connected")
-		}
-		list = append(list, connDigitRegex.FindString(status.Stdout[2]))
+	tx = []byte{uint8(0x01), uint8(0x0e), 0}
+	_ = driver.EnableChipSelect(0)
+	if err = conn.Tx(tx, rx); err != nil {
+		return nil, fmt.Errorf("failed to reset all logic analyzers: %v", err)
 	}
+	_ = driver.DisableChipSelect(0)
+	time.Sleep(1*time.Second)
+	list = append(list, devices[len(devices)-1].Name())
 
 	return list, err
 }

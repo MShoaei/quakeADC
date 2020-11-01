@@ -137,7 +137,7 @@ func (adc *Adc7768) Read(rx []byte, cs uint8) error {
 		return fmt.Errorf("invalid chip select %d", cs)
 	}
 	chipSelectPins[cs].FastOut(gpio.Low)
-	err := adc.connection.Tx(nil, rx)
+	err := adc.connection.Tx([]byte{0x8a, 0x00}, rx)
 	chipSelectPins[cs].FastOut(gpio.High)
 
 	return err
