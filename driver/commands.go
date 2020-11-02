@@ -7,8 +7,8 @@ import (
 )
 
 type ChStandbyOpts struct {
-	Write    bool
-	Channels [8]bool
+	Write    bool `json:"write"`
+	Channels [8]bool `json:"channels"`
 }
 
 func (adc *Adc7768) ChStandby(opts ChStandbyOpts, cs uint8) (tx []byte, rx []byte, err error) {

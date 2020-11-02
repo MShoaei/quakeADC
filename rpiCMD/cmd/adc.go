@@ -194,7 +194,7 @@ func newAdcPowerModeCommand() *cobra.Command {
 	f.Uint8Var(&options.LVDSClock, "lvds-clk", 0, "0: disable LVDS clock, 1: enable LVDS clock")
 	f.Uint8Var(&options.MCLKDiv, "mclk-div", 0, "0: set to MCLK/32 for low power mode, 2: set to MCLK/8 for median mode, 3: set to MCLK/4 for fast mode")
 	f.SortFlags = false
-	flagsList["PowerMode"] = f
+	//flagsList["PowerMode"] = f
 
 	return cmd
 }
@@ -230,7 +230,7 @@ func newAdcGeneralConfigurationCommand() *cobra.Command {
 	f.Uint8Var(&options.RETimeEnable, "retime-en", 0, "SYNC_OUT signal retime enable bit. 0: disabled, 1: enabled")
 	f.Uint8Var(&options.VcmPd, "vcm-pd", 0, "VCM buffer power-down. 0: enabled, 1: disabled")
 	f.Uint8Var(&options.VcmVSelect, "vcm-vsel", 0, "VCM voltage select bits. 0: (AVDD1 − AVSS)/2 V, 1: 1.65 V, 2: 2.5 V, 3: 2.14 V")
-	flagsList["GeneralConf"] = f
+	//flagsList["GeneralConf"] = f
 
 	return cmd
 }
@@ -266,7 +266,7 @@ func newAdcDataControlCommand() *cobra.Command {
 	f.Uint8Var(&options.SpiSync, "spi-sync", 1, "Software synchronization of the AD7768-4. This command has the same effect as sending a signal pulse to the START pin. 0: Change to SPI_SYNC low, 1: Change to SPI_SYNC high")
 	f.Uint8Var(&options.SingleShot, "single-shot", 0, "One-shot mode. Enables one-shot mode. In one-shot mode, the AD7768-4 output a conversion result in response to a SYNC_IN rising edge. 0: Disabled, 1: Enabled")
 	f.Uint8Var(&options.SpiReset, "spi-reset", 0, "Soft reset. Two successive commands must be received in the correct order to generate a reset. 0: No effect, 1: No effect, 2: Second reset command, 3: First reset command")
-	flagsList["DataControl"] = f
+	//flagsList["DataControl"] = f
 
 	return cmd
 }
@@ -301,7 +301,7 @@ func newAdcInterfaceConfigurationCommand() *cobra.Command {
 	f.BoolVar(&options.Write, "write", false, "set the write bit")
 	f.Uint8Var(&options.CRCSelect, "crc-sel", 0, "CRC select. These bits allow the user to implement a CRC on the data interface. 0: No CRC. Status bits with every conversion, 1: Replace the header with CRC message every 4 samples, 2: Replace the header with CRC message every 16 samples, 3: Replace the header with CRC message every 16 samples")
 	f.Uint8Var(&options.DclkDiv, "dclk-div", 0, "DCLK divider. These bits control division of the DCLK clock used to clock out conversion data on the DOUTx pins. 0: Divide by 8, 1: Divide by 4, 2: Divide by 2, 3: No division")
-	flagsList["InterfaceConf"] = f
+	//flagsList["InterfaceConf"] = f
 
 	return cmd
 }
@@ -335,7 +335,7 @@ func newAdcBISTControlCommand() *cobra.Command {
 
 	f.BoolVar(&options.Write, "write", false, "set the write bit")
 	f.Uint8Var(&options.RamBISTStart, "ram-bist-start", 0, "RAM BIST. 0: Off, 1: Begin RAM BIST")
-	flagsList["BISTControl"] = f
+	//flagsList["BISTControl"] = f
 
 	return cmd
 }
@@ -653,7 +653,7 @@ func newAdcNegativeRefPrechargeBufCommand() *cobra.Command {
 	f.Uint8Var(&options.Channels[5], "ch5", 1, "0: Off, 1: On (default: 0)")
 	f.Uint8Var(&options.Channels[6], "ch6", 1, "0: Off, 1: On (default: 0)")
 	f.Uint8Var(&options.Channels[7], "ch7", 1, "0: Off, 1: On (default: 0)")
-	flagsList["NegativeRefPrechargeBuf"] = f
+	//flagsList["NegativeRefPrechargeBuf"] = f
 
 	return cmd
 }
@@ -718,7 +718,7 @@ func newAdcChannelSyncOffsetCommand() *cobra.Command {
 	f.BoolVar(&options.Write, "write", false, "set the write bit")
 	f.Uint8Var(&options.Channel, "ch", 255, "select channel to set offset: ch: [0..7]")
 	_ = cmd.MarkFlagRequired("ch")
-	f.Uint8Var(&options.Offset, "MSB", 0, "Channel 'ch' sync phase offset (default: 0)")
+	f.Uint8Var(&options.Offset, "offset", 0, "Channel 'ch' sync phase offset (default: 0)")
 
 	return cmd
 }

@@ -10,12 +10,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/MShoaei/quakeADC/driver"
 	"github.com/go-cmd/cmd"
 	"github.com/gorilla/websocket"
 	"github.com/iris-contrib/middleware/cors"
 	"github.com/kataras/iris/v12"
 	"github.com/spf13/afero"
-	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -30,11 +30,6 @@ var upgrader = websocket.Upgrader{
 
 var sigrokRunning = false
 var dataFile afero.File
-
-// CommandsList is the list of all available commands
-var CommandsList map[string]func(*flag.FlagSet) ([]byte, []byte, error)
-
-var flagsList = map[string]*flag.FlagSet{}
 
 type usbDevice struct {
 	Name       string      `json:"name"`
@@ -79,13 +74,15 @@ func NewAPI() *iris.Application {
 
 	api.Post("/setup", setupHandler)
 	api.Options("/command", homeHandler)
-	api.Post("/command", commandHandler)
+	api.Post("/command/{cmd:string}/all", commandHandler)
+	api.Post("/command/{cmd:string}/{adc:uint8}", commandHandler)
 	api.Get("/getfile", getFileHandler)
 
 	api.Patch("/update", updateStack)
 
 	api.Get("/usb/all", getAllUSB)
 	api.Post("/rpi/shutdown", shutdownSequenceHandler)
+
 	return api
 }
 
@@ -207,77 +204,1080 @@ func updateStack(_ iris.Context) {
 }
 
 func commandHandler(ctx iris.Context) {
-	data := &struct {
-		Command string
-		Flags   []struct {
-			Name  string
-			Value string
+	switch ctx.Params().GetString("cmd") {
+	case "ChStandby":
+		opts := driver.ChStandbyOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
 		}
-	}{}
-
-	err := ctx.ReadJSON(data)
-	if err != nil {
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.ChStandby(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.ChStandby(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "ChModeA":
+		opts := driver.ChModeOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.ChModeA(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.ChModeA(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "ChModeB":
+		opts := driver.ChModeOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.ChModeB(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.ChModeB(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "ChModeSel":
+		opts := driver.ChModeSelectOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.ChModeSel(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.ChModeSel(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "PowerMode":
+		opts := driver.PowerModeOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.PowerMode(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.PowerMode(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "GeneralConf":
+		opts := driver.GeneralConfOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.GeneralConf(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.GeneralConf(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "DataControl":
+		opts := driver.DataControlOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.DataControl(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.DataControl(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "InterfaceConf":
+		opts := driver.InterfaceConfOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.InterfaceConf(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.InterfaceConf(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "BISTControl":
+		opts := driver.BISTControlOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.BISTControl(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.BISTControl(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "DeviceStatus":
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.DeviceStatus(adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.DeviceStatus(i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "RevisionID":
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.RevisionID(adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.RevisionID(i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "GPIOControl":
+		opts := driver.GPIOControlOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.GPIOControl(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.GPIOControl(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "GPIOWriteData":
+		opts := driver.GPIOWriteDataOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.GPIOWriteData(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.GPIOWriteData(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "GPIOReadData":
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.GPIOReadData(adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.GPIOReadData(i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "PrechargeBuffer1":
+		opts := driver.PreChargeBufferOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.PrechargeBuffer1(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.PrechargeBuffer1(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "PrechargeBuffer2":
+		opts := driver.PreChargeBufferOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.PrechargeBuffer2(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.PrechargeBuffer2(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "PositiveRefPrechargeBuf":
+		opts := driver.ReferencePrechargeBufOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.PositiveRefPrechargeBuf(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.PositiveRefPrechargeBuf(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "NegativeRefPrechargeBuf":
+		opts := driver.ReferencePrechargeBufOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.NegativeRefPrechargeBuf(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.NegativeRefPrechargeBuf(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "ChannelOffset":
+		opts := driver.ChannelOffsetOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			err := adcConnection.ChannelOffset(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			return
+		}
+		for i := uint8(1); i < 10; i++ {
+			err := adcConnection.ChannelOffset(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+		}
+		ctx.StatusCode(iris.StatusOK)
+		return
+	case "ChannelGain":
+		opts := driver.ChannelGainOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			err := adcConnection.ChannelGain(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			return
+		}
+		for i := uint8(1); i < 10; i++ {
+			err := adcConnection.ChannelGain(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+		}
+		ctx.StatusCode(iris.StatusOK)
+		return
+	case "ChannelSyncOffset":
+		opts := driver.ChannelSyncOffsetOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			err := adcConnection.ChannelSyncOffset(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			return
+		}
+		for i := uint8(1); i < 10; i++ {
+			err := adcConnection.ChannelSyncOffset(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+		}
+		ctx.StatusCode(iris.StatusOK)
+		return
+	case "DiagnosticRX":
+		opts := driver.DiagnosticRXOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.DiagnosticRX(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.DiagnosticRX(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "DiagnosticMuxControl":
+		opts := driver.DiagnosticMuxControlOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.DiagnosticMuxControl(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.DiagnosticMuxControl(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "ModulatorDelayControl":
+		opts := driver.ModulatorDelayControlOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.ModulatorDelayControl(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.ModulatorDelayControl(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "ChopControl":
+		opts := driver.ChopControlOpts{}
+		if err := ctx.ReadJSON(&opts); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			_, _ = ctx.JSON(iris.Map{
+				"error": err,
+			})
+			return
+		}
+		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.ChopControl(opts, adc)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			ctx.StatusCode(iris.StatusOK)
+			_, _ = ctx.JSON(iris.Map{
+				"tx": tx,
+				"rx": rx,
+			})
+			return
+		}
+		txResp := make([][]byte, 9)
+		rxResp := make([][]byte, 9)
+		for i := uint8(1); i < 10; i++ {
+			tx, rx, err := adcConnection.ChopControl(opts, i)
+			if err != nil {
+				ctx.StatusCode(iris.StatusInternalServerError)
+				_, _ = ctx.JSON(iris.Map{
+					"error": err,
+				})
+				return
+			}
+			txResp = append(txResp, tx)
+			rxResp = append(rxResp, rx)
+		}
+		ctx.StatusCode(iris.StatusOK)
+		_, _ = ctx.JSON(iris.Map{
+			"tx": txResp,
+			"rx": rxResp,
+		})
+		return
+	case "HardReset":
+	default:
 		ctx.StatusCode(iris.StatusBadRequest)
 		_, _ = ctx.JSON(iris.Map{
-			"message": "failed with error",
-			//"error":   err.Error(),
+			"error": "command not found",
 		})
-		log.Println(err)
 		return
 	}
-
-	command := CommandsList[data.Command]
-	if command == nil {
-		ctx.StatusCode(iris.StatusNotImplemented)
-		_, _ = ctx.JSON(iris.Map{
-			"error": "Unknown command",
-		})
-		log.Printf("unknown command: %s", data.Command)
-		return
-	}
-
-	set := flagsList[data.Command]
-	if set == nil { // should never happen!
-		ctx.StatusCode(iris.StatusNotImplemented)
-		_, _ = ctx.JSON(iris.Map{
-			"message": "flag set not found",
-			//"error":   err.Error(),
-		})
-		log.Printf("unknown command: %s", data.Command)
-		return
-	}
-
-	flags := make([]string, 0, 7)
-	for _, f := range data.Flags {
-		flags = append(flags, f.Name+"="+f.Value)
-	}
-	err = set.Parse(flags)
-	if err != nil {
-		ctx.StatusCode(iris.StatusInternalServerError)
-		_, _ = ctx.JSON(iris.Map{
-			"message": "failed with error",
-			//"error":   err.Error(),
-		})
-		log.Printf("flag parse failed with error: %s", err)
-		return
-	}
-
-	tx, rx, err := command(set)
-	if err != nil {
-		ctx.StatusCode(iris.StatusNotAcceptable)
-		_, _ = ctx.JSON(iris.Map{
-			"message": "failed with error",
-			//"error":   err.Error(),
-		})
-		log.Printf("command %s failed: %s", data.Command, err)
-		return
-	}
-
-	ctx.StatusCode(iris.StatusOK)
-	_, _ = ctx.JSON(iris.Map{
-		"tx": fmt.Sprintf("%v", tx),
-		"rx": fmt.Sprintf("%v", rx),
-	})
 }
 
 func readDataHandler(ctx iris.Context) {
