@@ -230,8 +230,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.ChStandby(opts, i)
 			if err != nil {
@@ -275,8 +275,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.ChModeA(opts, i)
 			if err != nil {
@@ -320,8 +320,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.ChModeB(opts, i)
 			if err != nil {
@@ -365,8 +365,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.ChModeSel(opts, i)
 			if err != nil {
@@ -410,8 +410,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.PowerMode(opts, i)
 			if err != nil {
@@ -455,8 +455,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.GeneralConf(opts, i)
 			if err != nil {
@@ -500,8 +500,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.DataControl(opts, i)
 			if err != nil {
@@ -545,8 +545,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.InterfaceConf(opts, i)
 			if err != nil {
@@ -590,8 +590,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.BISTControl(opts, i)
 			if err != nil {
@@ -627,8 +627,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.DeviceStatus(i)
 			if err != nil {
@@ -664,8 +664,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.RevisionID(i)
 			if err != nil {
@@ -709,8 +709,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.GPIOControl(opts, i)
 			if err != nil {
@@ -754,8 +754,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.GPIOWriteData(opts, i)
 			if err != nil {
@@ -791,8 +791,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.GPIOReadData(i)
 			if err != nil {
@@ -836,8 +836,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.PrechargeBuffer1(opts, i)
 			if err != nil {
@@ -881,8 +881,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.PrechargeBuffer2(opts, i)
 			if err != nil {
@@ -926,8 +926,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.PositiveRefPrechargeBuf(opts, i)
 			if err != nil {
@@ -971,8 +971,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.NegativeRefPrechargeBuf(opts, i)
 			if err != nil {
@@ -1115,8 +1115,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.DiagnosticRX(opts, i)
 			if err != nil {
@@ -1160,8 +1160,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.DiagnosticMuxControl(opts, i)
 			if err != nil {
@@ -1205,8 +1205,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.ModulatorDelayControl(opts, i)
 			if err != nil {
@@ -1250,8 +1250,8 @@ func commandHandler(ctx iris.Context) {
 			})
 			return
 		}
-		txResp := make([][]byte, 9)
-		rxResp := make([][]byte, 9)
+		txResp := make([][]byte, 0, 9)
+		rxResp := make([][]byte, 0, 9)
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.ChopControl(opts, i)
 			if err != nil {
