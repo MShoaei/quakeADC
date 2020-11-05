@@ -66,7 +66,7 @@ func NewAPI() *gin.Engine {
 
 	api.GET("/", homeHandler)
 
-	api.GET("/tree/:dir", treeHandler)
+	api.GET("/tree/*dir", treeHandler)
 
 	api.GET("/plot", readDataHandler)
 	api.POST("/plot", readDataPostHandler)
@@ -126,7 +126,7 @@ func treeHandler(c *gin.Context) {
 		fd = append(fd, item{Name: info.Name(), Dir: info.IsDir()})
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"directory": "/" + c.Param("dir"),
+		"directory": path.Clean("/" + c.Param("dir")),
 		"items":     fd,
 	})
 }
