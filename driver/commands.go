@@ -43,8 +43,8 @@ func (adc *Adc7768) ChStandby(opts ChStandbyOpts, cs uint8) (tx []byte, rx []byt
 
 type ChModeOpts struct {
 	Write   bool
-	FType   uint8
-	DecRate uint16
+	FType   uint8 `json:"f-type"`
+	DecRate uint16 `json:"dec-rate"`
 }
 
 func (adc *Adc7768) ChModeA(opts ChModeOpts, cs uint8) (tx []byte, rx []byte, err error) {
@@ -192,11 +192,11 @@ func (adc *Adc7768) ChModeSel(opts ChModeSelectOpts, cs uint8) (tx []byte, rx []
 }
 
 type PowerModeOpts struct {
-	Write     bool
-	Sleep     uint8
-	Power     uint8
-	LVDSClock uint8
-	MCLKDiv   uint8
+	Write     bool `json:"write"`
+	Sleep     uint8 `json:"sleep"`
+	Power     uint8 `json:"power"`
+	LVDSClock uint8 `json:"lvds-clock"`
+	MCLKDiv   uint8 `json:"mclk-div"`
 }
 
 func (adc *Adc7768) PowerMode(opts PowerModeOpts, cs uint8) (tx []byte, rx []byte, err error) {
@@ -261,10 +261,10 @@ func (adc *Adc7768) PowerMode(opts PowerModeOpts, cs uint8) (tx []byte, rx []byt
 }
 
 type GeneralConfOpts struct {
-	Write        bool
-	RETimeEnable uint8
-	VcmPd        uint8
-	VcmVSelect   uint8
+	Write        bool `json:"write"`
+	RETimeEnable uint8 `json:"retime-en"`
+	VcmPd        uint8 `json:"vcm-pd"`
+	VcmVSelect   uint8 `json:"vcm-vsel"`
 }
 
 func (adc *Adc7768) GeneralConf(opts GeneralConfOpts, cs uint8) (tx []byte, rx []byte, err error) {
@@ -328,10 +328,10 @@ func (adc *Adc7768) GeneralConf(opts GeneralConfOpts, cs uint8) (tx []byte, rx [
 }
 
 type DataControlOpts struct {
-	Write      bool
-	SpiSync    uint8
-	SingleShot uint8
-	SpiReset   uint8
+	Write      bool `json:"write"`
+	SpiSync    uint8 `json:"spi-sync"`
+	SingleShot uint8 `json:"single-shot"`
+	SpiReset   uint8 `json:"spi-reset"`
 }
 
 func (adc *Adc7768) DataControl(opts DataControlOpts, cs uint8) (tx []byte, rx []byte, err error) {
@@ -391,9 +391,9 @@ func (adc *Adc7768) DataControl(opts DataControlOpts, cs uint8) (tx []byte, rx [
 }
 
 type InterfaceConfOpts struct {
-	Write     bool
-	CRCSelect uint8
-	DclkDiv   uint8
+	Write     bool `json:"write"`
+	CRCSelect uint8 `json:"crc-sel"`
+	DclkDiv   uint8 `json:"dclk-div"`
 }
 
 func (adc *Adc7768) InterfaceConf(opts InterfaceConfOpts, cs uint8) (tx []byte, rx []byte, err error) {
@@ -448,8 +448,8 @@ func (adc *Adc7768) InterfaceConf(opts InterfaceConfOpts, cs uint8) (tx []byte, 
 }
 
 type BISTControlOpts struct {
-	Write        bool
-	RamBISTStart uint8
+	Write        bool `json:"write"`
+	RamBISTStart uint8 `json:"ram-bist-start"`
 }
 
 func (adc *Adc7768) BISTControl(opts BISTControlOpts, cs uint8) (tx []byte, rx []byte, err error) {
