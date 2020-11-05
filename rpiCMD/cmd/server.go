@@ -44,7 +44,7 @@ var serverCmd = &cobra.Command{
 		if os.Getenv("PORT") != "" {
 			port = os.Getenv("PORT")
 		}
-		_ = api.Listen(":" + port)
+		_ = api.Run(":" + port)
 	},
 }
 

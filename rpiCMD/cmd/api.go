@@ -8,13 +8,14 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/MShoaei/quakeADC/driver"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 	"github.com/go-cmd/cmd"
 	"github.com/gorilla/websocket"
-	"github.com/iris-contrib/middleware/cors"
-	"github.com/kataras/iris/v12"
 	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 )
@@ -50,73 +51,69 @@ var connectedUSB = map[int]usbDevice{}
 //	"Command": "chStandby",
 //	"Flags": "--write --ch3 t --ch2 t --ch1 t --ch0 f"
 //}
-func NewAPI() *iris.Application {
-	api := iris.Default()
+func NewAPI() *gin.Engine {
+	api := gin.Default()
 	if debug {
-		api.Any("/api/{path:path}", func(ctx iris.Context) {
-			r := ctx.Request()
+		api.Any("/api/:path", func(c *gin.Context) {
+			r := c.Request
 			r.URL.Path = strings.Replace(r.URL.Path, "/api", "", 1)
-			ctx.Application().ServeHTTPC(ctx)
+			//c.Application().ServeHTTPC(c)
 		})
 	}
-	api.Options("/login", loginOptionsHandler)
+	api.OPTIONS("/login", loginOptionsHandler)
 
-	api.Use(cors.AllowAll())
+	api.Use(cors.Default())
 
-	api.Get("/", homeHandler)
+	api.GET("/", homeHandler)
 
-	api.Get("/tree/{dir:path}", treeHandler)
+	api.GET("/tree/:dir", treeHandler)
 
-	api.Get("/plot", readDataHandler)
-	api.Post("/plot", readDataPostHandler)
+	api.GET("/plot", readDataHandler)
+	api.POST("/plot", readDataPostHandler)
 
-	api.Get("/plot/{file:path}", plotHandler)
+	api.GET("/plot/:file", plotHandler)
 
-	api.Post("/setup", setupHandler)
-	api.Options("/command", homeHandler)
-	api.Post("/command/{cmd:string}/all", commandHandler)
-	api.Post("/command/{cmd:string}/{adc:uint8}", commandHandler)
-	api.Get("/getfile", getFileHandler)
+	api.POST("/setup", setupHandler)
+	api.OPTIONS("/command", homeHandler)
+	api.POST("/command/:cmd/all", commandHandler)
+	api.POST("/command/:cmd/:adc", commandHandler)
+	api.GET("/getfile", getFileHandler)
 
-	api.Patch("/update", updateStack)
+	api.PATCH("/update", updateStack)
 
-	api.Get("/usb/all", getAllUSB)
-	api.Post("/rpi/shutdown", shutdownSequenceHandler)
+	api.GET("/usb/all", getAllUSB)
+	api.POST("/rpi/shutdown", shutdownSequenceHandler)
 
 	return api
 }
 
-func shutdownSequenceHandler(ctx iris.Context) {
+func shutdownSequenceHandler(c *gin.Context) {
 
 }
 
-func plotHandler(ctx iris.Context) {
-	dir, err := afero.IsDir(dataFS, "/"+ctx.Params().Get("file"))
+func plotHandler(c *gin.Context) {
+	dir, err := afero.IsDir(dataFS, "/"+c.Param("file"))
 	if err != nil {
-		ctx.StatusCode(iris.StatusNotFound)
-		_, _ = ctx.JSON(iris.Map{
+
+		c.JSON(http.StatusNotFound, gin.H{
 			"error": err,
 		})
 		return
 	}
 	if dir {
-		ctx.StatusCode(iris.StatusBadRequest)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err,
 		})
 		return
 	}
-	f, _ := dataFS.Open("/" + ctx.Params().Get("file"))
-	stat, _ := f.Stat()
-	ctx.StatusCode(iris.StatusOK)
-	ctx.ServeContent(f, f.Name()+".bin", stat.ModTime())
+	f, _ := dataFS.Open("/" + c.Param("file"))
+	c.File(f.Name() + ".bin")
 }
 
-func treeHandler(ctx iris.Context) {
-	list, err := afero.ReadDir(dataFS, "/"+ctx.Params().Get("dir"))
+func treeHandler(c *gin.Context) {
+	list, err := afero.ReadDir(dataFS, "/"+c.Param("dir"))
 	if err != nil {
-		ctx.StatusCode(iris.StatusBadRequest)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "invalid path parameter in url",
 		})
 		return
@@ -129,17 +126,15 @@ func treeHandler(ctx iris.Context) {
 	for _, info := range list {
 		fd = append(fd, item{Name: info.Name(), Dir: info.IsDir()})
 	}
-	ctx.StatusCode(iris.StatusOK)
-	_, _ = ctx.JSON(iris.Map{
-		"directory": "/" + ctx.Params().Get("dir"),
+	c.JSON(http.StatusOK, gin.H{
+		"directory": "/" + c.Param("dir"),
 		"items":     fd,
 	})
 }
 
-func setupHandler(ctx iris.Context) {
+func setupHandler(c *gin.Context) {
 	if sigrokRunning {
-		ctx.StatusCode(iris.StatusServiceUnavailable)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"error": "sampling is already running",
 		})
 		return
@@ -156,32 +151,28 @@ func setupHandler(ctx iris.Context) {
 		FileName     string `json:"fileName"`
 		ProjectName  string `json:"projectName"`
 	}{}
-	if err := ctx.ReadJSON(&setupData); err != nil {
-		ctx.StatusCode(iris.StatusBadRequest)
-		_, _ = ctx.JSON(iris.Map{
+	if err := c.BindJSON(&setupData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err,
 		})
 		return
 	}
 
 	if setupData.FileName == "" || setupData.ProjectName == "" {
-		ctx.StatusCode(iris.StatusBadRequest)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "invalid file name or project name",
 		})
 		return
 	}
 	if err := dataFS.MkdirAll(setupData.ProjectName, os.ModeDir|0755); err != nil {
-		ctx.StatusCode(iris.StatusBadRequest)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "invalid file project path",
 		})
 		return
 	}
 
 	if exists, _ := afero.Exists(dataFS, filepath.Join(setupData.ProjectName, setupData.FileName)); exists {
-		ctx.StatusCode(iris.StatusBadRequest)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "file already exists",
 		})
 		return
@@ -190,41 +181,41 @@ func setupHandler(ctx iris.Context) {
 	dataFile, _ = dataFS.Create(filepath.Join(setupData.ProjectName, setupData.FileName))
 	SendSyncSignal()
 	if err := execSigrokCLI(setupData.RecordTime); err != nil {
-		ctx.StatusCode(iris.StatusInternalServerError)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err,
 		})
-		return
+		c.JSON(http.StatusOK, nil)
 	}
-	ctx.StatusCode(iris.StatusOK)
 }
 
-func updateStack(_ iris.Context) {
+func updateStack(_ *gin.Context) {
 	//TODO: How to self update?
 }
 
-func commandHandler(ctx iris.Context) {
-	switch ctx.Params().GetString("cmd") {
+func commandHandler(c *gin.Context) {
+	adc, err := strconv.ParseUint(c.Param("adc"), 10, 8)
+	if err != nil {
+		_ = c.AbortWithError(http.StatusNotFound, err)
+		return
+	}
+	switch c.Param("cmd") {
 	case "ChStandby":
 		opts := driver.ChStandbyOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.ChStandby(opts, adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.ChStandby(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -235,8 +226,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.ChStandby(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -244,32 +234,28 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "ChModeA":
 		opts := driver.ChModeOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.ChModeA(opts, adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.ChModeA(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -280,8 +266,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.ChModeA(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -289,32 +274,28 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "ChModeB":
 		opts := driver.ChModeOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.ChModeB(opts, adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.ChModeB(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -325,8 +306,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.ChModeB(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -334,32 +314,28 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "ChModeSel":
 		opts := driver.ChModeSelectOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.ChModeSel(opts, adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.ChModeSel(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -370,8 +346,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.ChModeSel(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -379,32 +354,28 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "PowerMode":
 		opts := driver.PowerModeOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.PowerMode(opts, adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.PowerMode(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -415,8 +386,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.PowerMode(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -424,32 +394,28 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "GeneralConf":
 		opts := driver.GeneralConfOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.GeneralConf(opts, adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.GeneralConf(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -460,8 +426,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.GeneralConf(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -469,32 +434,28 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "DataControl":
 		opts := driver.DataControlOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.DataControl(opts, adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.DataControl(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -505,8 +466,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.DataControl(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -514,32 +474,28 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "InterfaceConf":
 		opts := driver.InterfaceConfOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.InterfaceConf(opts, adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.InterfaceConf(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -550,8 +506,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.InterfaceConf(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -559,32 +514,28 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "BISTControl":
 		opts := driver.BISTControlOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.BISTControl(opts, adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.BISTControl(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -595,8 +546,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.BISTControl(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -604,24 +554,21 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "DeviceStatus":
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.DeviceStatus(adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.DeviceStatus(uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -632,8 +579,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.DeviceStatus(i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -641,24 +587,21 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "RevisionID":
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.RevisionID(adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.RevisionID(uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -669,8 +612,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.RevisionID(i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -678,32 +620,28 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "GPIOControl":
 		opts := driver.GPIOControlOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.GPIOControl(opts, adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.GPIOControl(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -714,8 +652,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.GPIOControl(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -723,32 +660,28 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "GPIOWriteData":
 		opts := driver.GPIOWriteDataOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.GPIOWriteData(opts, adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.GPIOWriteData(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -759,8 +692,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.GPIOWriteData(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -768,24 +700,21 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "GPIOReadData":
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.GPIOReadData(adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.GPIOReadData(uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -796,8 +725,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.GPIOReadData(i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -805,32 +733,28 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "PrechargeBuffer1":
 		opts := driver.PreChargeBufferOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.PrechargeBuffer1(opts, adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.PrechargeBuffer1(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -841,8 +765,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.PrechargeBuffer1(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -850,32 +773,28 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "PrechargeBuffer2":
 		opts := driver.PreChargeBufferOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.PrechargeBuffer2(opts, adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.PrechargeBuffer2(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -886,8 +805,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.PrechargeBuffer2(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -895,32 +813,28 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "PositiveRefPrechargeBuf":
 		opts := driver.ReferencePrechargeBufOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.PositiveRefPrechargeBuf(opts, adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.PositiveRefPrechargeBuf(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -931,8 +845,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.PositiveRefPrechargeBuf(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -940,32 +853,28 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "NegativeRefPrechargeBuf":
 		opts := driver.ReferencePrechargeBufOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.NegativeRefPrechargeBuf(opts, adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.NegativeRefPrechargeBuf(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -976,8 +885,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.NegativeRefPrechargeBuf(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -985,131 +893,114 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "ChannelOffset":
 		opts := driver.ChannelOffsetOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			err := adcConnection.ChannelOffset(opts, adc)
+		if adc != 0 && adc < 10 {
+			err := adcConnection.ChannelOffset(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
+			c.JSON(http.StatusOK, nil)
 			return
 		}
 		for i := uint8(1); i < 10; i++ {
 			err := adcConnection.ChannelOffset(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
 		}
-		ctx.StatusCode(iris.StatusOK)
+		c.JSON(http.StatusOK, nil)
 		return
+
 	case "ChannelGain":
 		opts := driver.ChannelGainOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			err := adcConnection.ChannelGain(opts, adc)
+		if adc != 0 && adc < 10 {
+			err := adcConnection.ChannelGain(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
+			c.JSON(http.StatusOK, nil)
 			return
 		}
 		for i := uint8(1); i < 10; i++ {
 			err := adcConnection.ChannelGain(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
 		}
-		ctx.StatusCode(iris.StatusOK)
-		return
 	case "ChannelSyncOffset":
 		opts := driver.ChannelSyncOffsetOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			err := adcConnection.ChannelSyncOffset(opts, adc)
+		if adc != 0 && adc < 10 {
+			err := adcConnection.ChannelSyncOffset(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
-				return
 			}
-			ctx.StatusCode(iris.StatusOK)
+			c.JSON(http.StatusOK, nil)
 			return
 		}
 		for i := uint8(1); i < 10; i++ {
 			err := adcConnection.ChannelSyncOffset(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
 		}
-		ctx.StatusCode(iris.StatusOK)
-		return
 	case "DiagnosticRX":
 		opts := driver.DiagnosticRXOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.DiagnosticRX(opts, adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.DiagnosticRX(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -1120,8 +1011,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.DiagnosticRX(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -1129,32 +1019,28 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "DiagnosticMuxControl":
 		opts := driver.DiagnosticMuxControlOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.DiagnosticMuxControl(opts, adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.DiagnosticMuxControl(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -1165,8 +1051,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.DiagnosticMuxControl(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -1174,32 +1059,28 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "ModulatorDelayControl":
 		opts := driver.ModulatorDelayControlOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.ModulatorDelayControl(opts, adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.ModulatorDelayControl(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -1210,8 +1091,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.ModulatorDelayControl(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -1219,32 +1099,28 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "ChopControl":
 		opts := driver.ChopControlOpts{}
-		if err := ctx.ReadJSON(&opts); err != nil {
-			ctx.StatusCode(iris.StatusBadRequest)
-			_, _ = ctx.JSON(iris.Map{
+		if err := c.BindJSON(&opts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err,
 			})
 			return
 		}
-		if adc := ctx.Params().GetUint8Default("adc", 0); adc != 0 && adc < 10 {
-			tx, rx, err := adcConnection.ChopControl(opts, adc)
+		if adc != 0 && adc < 10 {
+			tx, rx, err := adcConnection.ChopControl(opts, uint8(adc))
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
-			ctx.StatusCode(iris.StatusOK)
-			_, _ = ctx.JSON(iris.Map{
+			c.JSON(http.StatusOK, gin.H{
 				"tx": tx,
 				"rx": rx,
 			})
@@ -1255,8 +1131,7 @@ func commandHandler(ctx iris.Context) {
 		for i := uint8(1); i < 10; i++ {
 			tx, rx, err := adcConnection.ChopControl(opts, i)
 			if err != nil {
-				ctx.StatusCode(iris.StatusInternalServerError)
-				_, _ = ctx.JSON(iris.Map{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
@@ -1264,24 +1139,22 @@ func commandHandler(ctx iris.Context) {
 			txResp = append(txResp, tx)
 			rxResp = append(rxResp, rx)
 		}
-		ctx.StatusCode(iris.StatusOK)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusOK, gin.H{
 			"tx": txResp,
 			"rx": rxResp,
 		})
 		return
 	case "HardReset":
 	default:
-		ctx.StatusCode(iris.StatusBadRequest)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "command not found",
 		})
 		return
 	}
 }
 
-func readDataHandler(ctx iris.Context) {
-	conn, err := upgrader.Upgrade(ctx.ResponseWriter(), ctx.Request(), nil)
+func readDataHandler(c *gin.Context) {
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Println("WebSocket creation error: ", err)
 		return
@@ -1290,8 +1163,8 @@ func readDataHandler(ctx iris.Context) {
 	form := struct {
 		File string `json:"file"`
 	}{}
-	if err := ctx.ReadQuery(&form); err != nil {
-		_ = conn.WriteJSON(iris.Map{
+	if err := c.BindQuery(&form); err != nil {
+		_ = conn.WriteJSON(gin.H{
 			"err": err,
 		})
 		_ = conn.Close()
@@ -1301,7 +1174,7 @@ func readDataHandler(ctx iris.Context) {
 
 	f, err := dataFS.Open(form.File)
 	if err != nil {
-		_ = conn.WriteJSON(iris.Map{
+		_ = conn.WriteJSON(gin.H{
 			"err": fmt.Errorf("failed to open file: %v", err),
 		})
 		_ = conn.Close()
@@ -1315,14 +1188,13 @@ func readDataHandler(ctx iris.Context) {
 	_ = conn.Close()
 }
 
-func readDataPostHandler(ctx iris.Context) {
+func readDataPostHandler(c *gin.Context) {
 	form := struct {
 		File string `json:"file"`
 	}{}
 
-	if err := ctx.ReadJSON(&form); err != nil {
-		ctx.StatusCode(iris.StatusBadRequest)
-		_, _ = ctx.JSON(iris.Map{
+	if err := c.BindJSON(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "failed with error",
 		})
 		return
@@ -1330,39 +1202,32 @@ func readDataPostHandler(ctx iris.Context) {
 
 	info, err := dataFS.Stat(form.File)
 	if err != nil {
-		ctx.StatusCode(iris.StatusBadRequest)
-		_, _ = ctx.JSON(iris.Map{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"err": fmt.Errorf("failed to open file: %v", err),
 		})
 		return
 	}
 
-	ctx.StatusCode(iris.StatusOK)
-	_, _ = ctx.JSON(iris.Map{
+	c.JSON(http.StatusOK, gin.H{
 		"size": info.Size() / 80,
 	})
 }
 
-func getFileHandler(ctx iris.Context) {
-	err := ctx.SendFile(dataFile.Name(), path.Base(dataFile.Name()))
-	if err != nil {
-		log.Println("sending file failed with error: ", err)
-	}
-	return
+func getFileHandler(c *gin.Context) {
+	c.FileAttachment(path.Base(dataFile.Name()), dataFile.Name())
 }
 
-func homeHandler(ctx iris.Context) {
-	ctx.StatusCode(iris.StatusOK)
-	_, _ = ctx.JSON(iris.Map{
+func homeHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
 		"message": "Home api",
 	})
 }
 
-func loginOptionsHandler(ctx iris.Context) {
-	ctx.Header("Allow", "OPTIONS, POST")
+func loginOptionsHandler(c *gin.Context) {
+	//c.Header("Allow", "OPTIONS, POST")
 }
 
-func getAllUSB(ctx iris.Context) {
+func getAllUSB(c *gin.Context) {
 	var allDevices []usbDevice
 	status := <-cmd.NewCmd("lsblk", "-o", "NAME,LABEL,SIZE,MOUNTPOINT", "-J").Start()
 	str := strings.Builder{}
@@ -1386,7 +1251,7 @@ func getAllUSB(ctx iris.Context) {
 	//	}
 	//}
 
-	_, _ = ctx.JSON(iris.Map{
+	c.JSON(http.StatusOK, gin.H{
 		"devices": connectedUSB,
 	})
 }
