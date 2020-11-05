@@ -75,7 +75,6 @@ func NewAPI() *gin.Engine {
 
 	api.POST("/setup", setupHandler)
 	api.OPTIONS("/command", homeHandler)
-	api.POST("/command/:cmd/all", commandHandler)
 	api.POST("/command/:cmd/:adc", commandHandler)
 	api.GET("/getfile", getFileHandler)
 
