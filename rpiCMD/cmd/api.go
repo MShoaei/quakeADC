@@ -1158,20 +1158,17 @@ func readDataHandler(c *gin.Context) {
 		log.Println("WebSocket creation error: ", err)
 		return
 	}
-
-	form := struct {
-		File string `json:"file"`
-	}{}
-	if err := c.BindQuery(&form); err != nil {
+	var file string
+	if file = c.Query("file"); file == "" {
 		_ = conn.WriteJSON(gin.H{
-			"err": err,
+			"err": "invalid query parameter value",
 		})
 		_ = conn.Close()
 		return
 	}
-	log.Println(form.File)
+	log.Println(file)
 
-	f, err := dataFS.Open(form.File)
+	f, err := dataFS.Open(file)
 	if err != nil {
 		_ = conn.WriteJSON(gin.H{
 			"err": fmt.Errorf("failed to open file: %v", err),
