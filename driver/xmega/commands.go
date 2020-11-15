@@ -50,6 +50,19 @@ func StatusLED(conn spi.Connection, s status) error {
 	return nil
 }
 
+func TurnOnAllADC(conn spi.Connection) error {
+	var tx []byte
+	tx = []byte{uint8(0x05), uint8(0x07), 0}
+	rx := make([]byte, 3)
+
+	_ = driver.EnableChipSelect(0)
+	if err := conn.Tx(tx, rx); err != nil {
+		return fmt.Errorf("reset all adcs failed: %v", err)
+	}
+	_ = driver.DisableChipSelect(0)
+	return nil
+}
+
 func ResetAllADC(conn spi.Connection) error {
 	var tx []byte
 	tx = []byte{uint8(0x01), uint8(0x01), 0}
@@ -140,6 +153,26 @@ func DetectLogicConnString(conn spi.Connection) (list []string, err error) {
 
 func ReadID(conn spi.Connection) {
 	tx := []byte{uint8(0x88), uint8(0), 0}
+	rx := make([]byte, 3)
+
+	_ = driver.EnableChipSelect(0)
+	conn.Tx(tx, rx)
+	_ = driver.DisableChipSelect(0)
+	log.Println(rx)
+}
+
+func SamplingStart(conn spi.Connection) {
+	tx := []byte{uint8(0x10), uint8(0x42), 0}
+	rx := make([]byte, 3)
+
+	_ = driver.EnableChipSelect(0)
+	conn.Tx(tx, rx)
+	_ = driver.DisableChipSelect(0)
+	log.Println(rx)
+}
+
+func SamplingEnd(conn spi.Connection) {
+	tx := []byte{uint8(0x10), uint8(0x02), 0}
 	rx := make([]byte, 3)
 
 	_ = driver.EnableChipSelect(0)
