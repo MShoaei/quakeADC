@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/MShoaei/quakeADC/driver"
+	"github.com/MShoaei/quakeADC/driver/xmega"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-cmd/cmd"
@@ -64,7 +65,7 @@ func NewAPI() *gin.Engine {
 
 	api.Use(cors.Default())
 
-	api.GET("/", homeHandler)
+	api.GET("/status", samplingStatusHandler)
 
 	api.GET("/tree/*dir", treeHandler)
 
@@ -74,7 +75,6 @@ func NewAPI() *gin.Engine {
 	api.GET("/plot/:file", plotHandler)
 
 	api.POST("/setup", setupHandler)
-	api.OPTIONS("/command", homeHandler)
 	api.POST("/command/:cmd/:adc", commandHandler)
 	api.GET("/getfile", getFileHandler)
 
@@ -82,8 +82,54 @@ func NewAPI() *gin.Engine {
 
 	api.GET("/usb/all", getAllUSB)
 	api.POST("/rpi/shutdown", shutdownSequenceHandler)
+	api.POST("/rpi/restart", restartSequenceHandler)
+	api.GET("/channels", getChannelsHandler)
+	api.POST("/channels", setChannelsHandler)
+	api.GET("/gains", getGainsHandler)
+	api.POST("/gains", setGainsHandler)
 
 	return api
+}
+
+func setGainsHandler(c *gin.Context) {
+
+}
+
+func getGainsHandler(c *gin.Context) {
+
+}
+
+func restartSequenceHandler(c *gin.Context) {
+
+}
+
+func setChannelsHandler(c *gin.Context) {
+	ch := [24]bool{}
+	if err := c.BindJSON(&ch); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"err": err.Error(),
+		})
+		return
+	}
+	c.Status(http.StatusOK)
+}
+
+func getChannelsHandler(c *gin.Context) {
+	ch := [24]bool{}
+	ch[0] = true
+	opt := driver.ChStandbyOpts{
+		Write:    false,
+		Channels: [8]bool{},
+	}
+	_, rx, err := adcConnection.ChStandby(opt, 1)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"err": err,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"rx": rx,
+	})
 }
 
 func shutdownSequenceHandler(c *gin.Context) {
@@ -131,6 +177,55 @@ func treeHandler(c *gin.Context) {
 	})
 }
 
+func configSamplingTime(st float32) {
+	chOpt := driver.ChModeOpts{Write: true, FType: 1}
+	powerOpt := driver.PowerModeOpts{Write: true}
+	interfaceOpt := driver.InterfaceConfOpts{Write: true, CRCSelect: 0}
+	switch st {
+	case 16:
+		return
+	case 31.25:
+		chOpt.DecRate = 128
+		powerOpt.Power = 2
+		powerOpt.MCLKDiv = 2
+		interfaceOpt.DclkDiv = 1
+	case 62.5:
+		chOpt.DecRate = 256
+		powerOpt.Power = 2
+		powerOpt.MCLKDiv = 2
+		interfaceOpt.DclkDiv = 1
+	case 125:
+		chOpt.DecRate = 512
+		powerOpt.Power = 2
+		powerOpt.MCLKDiv = 2
+		interfaceOpt.DclkDiv = 1
+	case 250:
+		chOpt.DecRate = 1256
+		powerOpt.Power = 0
+		powerOpt.MCLKDiv = 0
+		interfaceOpt.DclkDiv = 0
+	case 500:
+		chOpt.DecRate = 128
+		powerOpt.Power = 0
+		powerOpt.MCLKDiv = 0
+		interfaceOpt.DclkDiv = 0
+	case 1000:
+		chOpt.DecRate = 1024
+		powerOpt.Power = 0
+		powerOpt.MCLKDiv = 0
+		interfaceOpt.DclkDiv = 0
+	case 2000:
+		return
+	}
+
+	for i := uint8(1); i < 10; i++ {
+		adcConnection.ChModeA(chOpt, i)
+		adcConnection.ChModeB(chOpt, i)
+		adcConnection.PowerMode(powerOpt, i)
+		adcConnection.InterfaceConf(interfaceOpt, i)
+	}
+}
+
 func setupHandler(c *gin.Context) {
 	if sigrokRunning {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
@@ -139,16 +234,11 @@ func setupHandler(c *gin.Context) {
 		return
 	}
 	setupData := struct {
-		Channels []string `json:"channels"`
-		Gains    []struct {
-			Ch    string `json:"ch"`
-			Value int    `json:"value"`
-		}
-		StartMode    string `json:"startMode"`
-		RecordTime   int    `json:"recordTime"`
-		SamplingTime int    `json:"samplingTime"`
-		FileName     string `json:"fileName"`
-		ProjectName  string `json:"projectName"`
+		StartMode    string  `json:"startMode"`
+		RecordTime   int     `json:"recordTime"`
+		SamplingTime float32 `json:"samplingTime"`
+		FileName     string  `json:"fileName"`
+		ProjectName  string  `json:"projectName"`
 	}{}
 	if err := c.BindJSON(&setupData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -178,13 +268,29 @@ func setupHandler(c *gin.Context) {
 	}
 
 	dataFile, _ = dataFS.Create(filepath.Join(setupData.ProjectName, setupData.FileName))
+	if err := xmega.TurnOnAllADC(adcConnection.Connection()); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	if err := xmega.EnableMCLK(adcConnection.Connection()); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	configSamplingTime(setupData.SamplingTime)
 	SendSyncSignal()
+	xmega.SamplingStart(adcConnection.Connection())
+	defer xmega.SamplingEnd(adcConnection.Connection())
 	if err := execSigrokCLI(setupData.RecordTime); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err,
+			"error": err.Error(),
 		})
-		c.JSON(http.StatusOK, nil)
+		return
 	}
+	c.JSON(http.StatusOK, nil)
 }
 
 func updateStack(_ *gin.Context) {
@@ -194,7 +300,9 @@ func updateStack(_ *gin.Context) {
 func commandHandler(c *gin.Context) {
 	adc, err := strconv.ParseUint(c.Param("adc"), 10, 8)
 	if err != nil {
-		_ = c.AbortWithError(http.StatusNotFound, err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"err": err,
+		})
 		return
 	}
 	switch c.Param("cmd") {
@@ -1213,9 +1321,15 @@ func getFileHandler(c *gin.Context) {
 	c.FileAttachment(path.Base(dataFile.Name()), dataFile.Name())
 }
 
-func homeHandler(c *gin.Context) {
+func samplingStatusHandler(c *gin.Context) {
+	if sigrokRunning {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"message": "running",
+		})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Home api",
+		"message": "not running",
 	})
 }
 
