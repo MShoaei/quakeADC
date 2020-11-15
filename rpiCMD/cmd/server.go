@@ -11,7 +11,6 @@ import (
 	"github.com/MShoaei/quakeADC/driver/xmega"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
-	"gobot.io/x/gobot/drivers/spi"
 )
 
 var dataFS afero.Fs
@@ -49,38 +48,27 @@ var serverCmd = &cobra.Command{
 }
 
 func HardwareInitSeq() error {
-	//if err := xmega.Reset(); err != nil {
-	//	return fmt.Errorf("reset failed: %v", err)
-	//}
-	//time.Sleep(2 * time.Second)
-
-	conn, err := spi.GetSpiConnection(0, 0, 0, 8, 50000)
-	if err != nil {
-		return fmt.Errorf("failed to create spi connection: %v", err)
-	}
-	defer conn.Close()
-
-	xmega.ReadID(conn)
+	xmega.ReadID(adcConnection.Connection())
 	time.Sleep(100 * time.Millisecond)
 
-	if err := xmega.ResetAllADC(conn); err != nil {
+	if err := xmega.ResetAllADC(adcConnection.Connection()); err != nil {
 		return fmt.Errorf("failed to reset ADCs: %v", err)
 	}
 	time.Sleep(100 * time.Millisecond)
 
 	//TODO: Multi logic analyzer is not implemented. The function below SHOULD be implemented.
-	list, err := xmega.DetectLogicConnString(conn)
+	list, err := xmega.DetectLogicConnString(adcConnection.Connection())
 	if err != nil {
 		return fmt.Errorf("failed to detect logic analyzers conn string: %v", err)
 	}
 	driverConnDigits = list
 	time.Sleep(100 * time.Millisecond)
 
-	if err := xmega.EnableMCLK(conn); err != nil {
+	if err := xmega.EnableMCLK(adcConnection.Connection()); err != nil {
 		return fmt.Errorf("failed to enable MCLK: %v", err)
 	}
 
-	if err := xmega.StatusLED(conn, xmega.On); err != nil {
+	if err := xmega.StatusLED(adcConnection.Connection(), xmega.On); err != nil {
 		return fmt.Errorf("failed to turn on LED: %v", err)
 	}
 	time.Sleep(100 * time.Millisecond)

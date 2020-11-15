@@ -107,6 +107,10 @@ func GetSpiConnection(busNum, chipNum, mode, bits int, maxSpeed int64) (*Adc7768
 	return &Adc7768{connection: c.(*spi.SpiConnection)}, nil
 }
 
+func (adc Adc7768) Connection() spi.Connection {
+	return adc.connection
+}
+
 // Transmit is used to send a new command and receive last commands response
 func (adc *Adc7768) Transmit(tx, rx []byte, cs uint8) error {
 	if cs < 1 || cs > 9 {
