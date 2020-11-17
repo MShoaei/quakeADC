@@ -92,7 +92,30 @@ func NewAPI() *gin.Engine {
 }
 
 func setGainsHandler(c *gin.Context) {
-
+	const MSBMask uint32 = 0x00ff0000
+	const MidMask uint32 = 0x0000ff00
+	const LSBMask uint32 = 0x000000ff
+	gains := [24]uint32{}
+	if err := c.BindJSON(&gains); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"err": err.Error(),
+		})
+		return
+	}
+	opts := driver.ChannelGainOpts{Write: true}
+	for i := 0; i < len(gains); i++ {
+		opts.Channel = uint8(i) - (uint8(i/8) * 8)
+		opts.Offset[0] = uint8(gains[i] & MSBMask)
+		opts.Offset[1] = uint8(gains[i] & MidMask)
+		opts.Offset[2] = uint8(gains[i] & LSBMask)
+		if err := adcConnection.ChannelGain(opts, uint8(i/8)+1); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"err": err.Error(),
+			})
+			return
+		}
+	}
+	c.JSON(http.StatusOK, nil)
 }
 
 func getGainsHandler(c *gin.Context) {
