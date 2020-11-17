@@ -124,7 +124,7 @@ func getChannelsHandler(c *gin.Context) {
 	_, rx, err := adcConnection.ChStandby(opt, 1)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"err": err,
+			"err": err.Error(),
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{
