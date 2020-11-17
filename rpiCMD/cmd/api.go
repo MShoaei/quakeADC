@@ -100,7 +100,8 @@ func getGainsHandler(c *gin.Context) {
 }
 
 func restartSequenceHandler(c *gin.Context) {
-
+	xmega.Reset()
+	cmd.NewCmd("/usr/bin/sudo", "/sbin/shutdown", "-r", "now").Start()
 }
 
 func setChannelsHandler(c *gin.Context) {
@@ -133,7 +134,7 @@ func getChannelsHandler(c *gin.Context) {
 }
 
 func shutdownSequenceHandler(c *gin.Context) {
-
+	xmega.Shutdown(adcConnection.Connection())
 }
 
 func plotHandler(c *gin.Context) {
