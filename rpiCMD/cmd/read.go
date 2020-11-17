@@ -234,7 +234,7 @@ func clockIndex() (dclkChan <-chan int) {
 			// maybe there is a cleaner way to fix this?
 			dclk <- i + 1
 
-			for clock := 0; clock < 32*4; {
+			for clock := 0; clock < 32*4 && i+1 < len(buffer); {
 				tempClock[0] = !tempClock[1]
 				tempClock[1] = buffer[i+1]&logic1DataClockMask == 0
 				if !(tempClock[0] && tempClock[1]) {
