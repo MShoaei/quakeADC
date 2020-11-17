@@ -218,7 +218,11 @@ func clockIndex() (dclkChan <-chan int) {
 	dclk := make(chan int, 1000)
 	drdyChan := dataReadyIndex()
 	go func(drdyChan <-chan int) {
-
+		defer func() {
+			err := recover()
+			log.Println(err)
+			close(dclk)
+		}()
 		tempClock := [2]bool{
 			false,
 			false,
