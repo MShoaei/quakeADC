@@ -139,15 +139,14 @@ func shutdownSequenceHandler(c *gin.Context) {
 func plotHandler(c *gin.Context) {
 	dir, err := afero.IsDir(dataFS, "/"+c.Param("file"))
 	if err != nil {
-
 		c.JSON(http.StatusNotFound, gin.H{
-			"error": err,
+			"error": err.Error(),
 		})
 		return
 	}
 	if dir {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err,
+			"error": "invalid path. path is a directory",
 		})
 		return
 	}
@@ -242,7 +241,7 @@ func setupHandler(c *gin.Context) {
 	}{}
 	if err := c.BindJSON(&setupData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err,
+			"error": err.Error(),
 		})
 		return
 	}
@@ -290,7 +289,7 @@ func commandHandler(c *gin.Context) {
 	adc, err := strconv.ParseUint(c.Param("adc"), 10, 8)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"err": err,
+			"err": err.Error(),
 		})
 		return
 	}
@@ -299,7 +298,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.ChStandbyOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -307,7 +306,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.ChStandby(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -323,7 +322,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.ChStandby(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -339,7 +338,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.ChModeOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -347,7 +346,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.ChModeA(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -363,7 +362,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.ChModeA(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -379,7 +378,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.ChModeOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -387,7 +386,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.ChModeB(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -403,7 +402,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.ChModeB(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -419,7 +418,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.ChModeSelectOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -427,7 +426,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.ChModeSel(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -443,7 +442,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.ChModeSel(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -459,7 +458,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.PowerModeOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -467,7 +466,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.PowerMode(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -483,7 +482,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.PowerMode(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -499,7 +498,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.GeneralConfOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -507,7 +506,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.GeneralConf(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -523,7 +522,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.GeneralConf(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -539,7 +538,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.DataControlOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -547,7 +546,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.DataControl(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -563,7 +562,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.DataControl(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -579,7 +578,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.InterfaceConfOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -587,7 +586,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.InterfaceConf(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -603,7 +602,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.InterfaceConf(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -619,7 +618,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.BISTControlOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -627,7 +626,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.BISTControl(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -643,7 +642,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.BISTControl(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -660,7 +659,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.DeviceStatus(uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -676,7 +675,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.DeviceStatus(i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -693,7 +692,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.RevisionID(uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -709,7 +708,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.RevisionID(i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -725,7 +724,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.GPIOControlOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -733,7 +732,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.GPIOControl(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -749,7 +748,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.GPIOControl(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -765,7 +764,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.GPIOWriteDataOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -773,7 +772,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.GPIOWriteData(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -789,7 +788,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.GPIOWriteData(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -806,7 +805,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.GPIOReadData(uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -822,7 +821,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.GPIOReadData(i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -838,7 +837,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.PreChargeBufferOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -846,7 +845,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.PrechargeBuffer1(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -862,7 +861,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.PrechargeBuffer1(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -878,7 +877,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.PreChargeBufferOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -886,7 +885,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.PrechargeBuffer2(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -902,7 +901,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.PrechargeBuffer2(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -918,7 +917,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.ReferencePrechargeBufOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -926,7 +925,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.PositiveRefPrechargeBuf(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -942,7 +941,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.PositiveRefPrechargeBuf(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -958,7 +957,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.ReferencePrechargeBufOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -966,7 +965,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.NegativeRefPrechargeBuf(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -982,7 +981,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.NegativeRefPrechargeBuf(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -998,7 +997,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.ChannelOffsetOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -1006,7 +1005,7 @@ func commandHandler(c *gin.Context) {
 			err := adcConnection.ChannelOffset(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -1017,7 +1016,7 @@ func commandHandler(c *gin.Context) {
 			err := adcConnection.ChannelOffset(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -1029,7 +1028,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.ChannelGainOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -1037,7 +1036,7 @@ func commandHandler(c *gin.Context) {
 			err := adcConnection.ChannelGain(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -1048,7 +1047,7 @@ func commandHandler(c *gin.Context) {
 			err := adcConnection.ChannelGain(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -1057,7 +1056,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.ChannelSyncOffsetOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -1065,7 +1064,7 @@ func commandHandler(c *gin.Context) {
 			err := adcConnection.ChannelSyncOffset(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 			}
 			c.JSON(http.StatusOK, nil)
@@ -1075,7 +1074,7 @@ func commandHandler(c *gin.Context) {
 			err := adcConnection.ChannelSyncOffset(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -1084,7 +1083,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.DiagnosticRXOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -1092,7 +1091,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.DiagnosticRX(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -1108,7 +1107,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.DiagnosticRX(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -1124,7 +1123,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.DiagnosticMuxControlOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -1132,7 +1131,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.DiagnosticMuxControl(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -1148,7 +1147,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.DiagnosticMuxControl(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -1164,7 +1163,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.ModulatorDelayControlOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -1172,7 +1171,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.ModulatorDelayControl(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -1188,7 +1187,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.ModulatorDelayControl(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -1204,7 +1203,7 @@ func commandHandler(c *gin.Context) {
 		opts := driver.ChopControlOpts{}
 		if err := c.BindJSON(&opts); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
@@ -1212,7 +1211,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.ChopControl(opts, uint8(adc))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
@@ -1228,7 +1227,7 @@ func commandHandler(c *gin.Context) {
 			tx, rx, err := adcConnection.ChopControl(opts, i)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err,
+					"error": err.Error(),
 				})
 				return
 			}
