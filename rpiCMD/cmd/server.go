@@ -72,6 +72,7 @@ func HardwareInitSeq() error {
 	if err := xmega.EnableMCLK(adcConnection.Connection()); err != nil {
 		return fmt.Errorf("failed to enable MCLK: %v", err)
 	}
+	time.Sleep(100 * time.Millisecond)
 
 	if err := xmega.StatusLED(adcConnection.Connection(), xmega.On); err != nil {
 		return fmt.Errorf("failed to turn on LED: %v", err)
