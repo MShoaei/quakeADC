@@ -219,9 +219,11 @@ func clockIndex() (dclkChan <-chan int) {
 	drdyChan := dataReadyIndex()
 	go func(drdyChan <-chan int) {
 		defer func() {
-			err := recover()
-			log.Println(err)
-			close(dclk)
+			if r := recover(); r != nil {
+				fmt.Println("Recovering from panic:", r)
+				log.Println(r)
+				close(dclk)
+			}
 		}()
 		tempClock := [2]bool{
 			false,
