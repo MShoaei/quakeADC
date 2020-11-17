@@ -25,6 +25,16 @@ func Reset() error {
 	return nil
 }
 
+func Shutdown(conn spi.Connection)  {
+	var tx []byte
+	tx = []byte{uint8(0x02), uint8(0x02), 0}
+	rx := make([]byte, 3)
+
+	_ = driver.EnableChipSelect(0)
+	_ = conn.Tx(tx, rx)
+	_ = driver.DisableChipSelect(0)
+}
+
 type status int
 
 const (
