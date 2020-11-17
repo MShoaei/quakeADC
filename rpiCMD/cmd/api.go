@@ -268,18 +268,7 @@ func setupHandler(c *gin.Context) {
 	}
 
 	dataFile, _ = dataFS.Create(filepath.Join(setupData.ProjectName, setupData.FileName))
-	if err := xmega.TurnOnAllADC(adcConnection.Connection()); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-	if err := xmega.EnableMCLK(adcConnection.Connection()); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
+
 	configSamplingTime(setupData.SamplingTime)
 	SendSyncSignal()
 	xmega.SamplingStart(adcConnection.Connection())

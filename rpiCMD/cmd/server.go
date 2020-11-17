@@ -51,6 +51,11 @@ func HardwareInitSeq() error {
 	xmega.ReadID(adcConnection.Connection())
 	time.Sleep(100 * time.Millisecond)
 
+	if err := xmega.TurnOnAllADC(adcConnection.Connection()); err != nil {
+		return fmt.Errorf("failed to reset ADCs: %v", err)
+	}
+	time.Sleep(100 * time.Millisecond)
+
 	if err := xmega.ResetAllADC(adcConnection.Connection()); err != nil {
 		return fmt.Errorf("failed to reset ADCs: %v", err)
 	}
