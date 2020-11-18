@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/MShoaei/quakeADC/driver"
 	"github.com/MShoaei/quakeADC/driver/xmega"
@@ -87,8 +88,37 @@ func NewAPI() *gin.Engine {
 	api.POST("/channels", setChannelsHandler)
 	api.GET("/gains", getGainsHandler)
 	api.POST("/gains", setGainsHandler)
+	api.GET("/info", boardInfoHandler)
 
 	return api
+}
+
+func boardInfoHandler(c *gin.Context) {
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		log.Println("WebSocket creation error: ", err)
+		return
+	}
+	type message struct {
+		Voltage []int16 `json:"voltage"`
+		Current []int16 `json:"current"`
+	}
+	open := true
+	conn.SetCloseHandler(func(code int, text string) error {
+		log.Println(code, text)
+		open = false
+		return nil
+	})
+	for open {
+		voltage := xmega.GetVoltage(adcConnection.Connection())
+		current := xmega.GetCurrent(adcConnection.Connection())
+		m := message{
+			Voltage: voltage,
+			Current: current,
+		}
+		conn.WriteJSON(&m)
+		time.Sleep(2 * time.Second)
+	}
 }
 
 func setGainsHandler(c *gin.Context) {

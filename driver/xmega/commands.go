@@ -25,7 +25,7 @@ func Reset() error {
 	return nil
 }
 
-func Shutdown(conn spi.Connection)  {
+func Shutdown(conn spi.Connection) {
 	var tx []byte
 	tx = []byte{uint8(0x02), uint8(0x02), 0}
 	rx := make([]byte, 3)
@@ -189,4 +189,82 @@ func SamplingEnd(conn spi.Connection) {
 	conn.Tx(tx, rx)
 	_ = driver.DisableChipSelect(0)
 	log.Println(rx)
+}
+
+func GetVoltage(conn spi.Connection) []int16 {
+	tx := make([]byte, 3, 3)
+	rx := make([]byte, 3, 3)
+	res := make([]int16, 0, 12)
+	for i := uint8(0); i < 4; i++ {
+		tx = []byte{uint8(0x0b), 0x04 | i, 0}
+		_ = driver.EnableChipSelect(0)
+		_ = conn.Tx(tx, rx)
+		_ = driver.DisableChipSelect(0)
+		time.Sleep(100 * time.Millisecond)
+
+		for j := uint8(2); j < 8; j += 2 {
+			tx = []byte{uint8(0x0c), j, 0}
+			_ = driver.EnableChipSelect(0)
+			_ = conn.Tx(tx, rx)
+			_ = driver.DisableChipSelect(0)
+			time.Sleep(100 * time.Millisecond)
+
+			var value int16
+			tx = []byte{uint8(0x8d), 0, 0}
+			_ = driver.EnableChipSelect(0)
+			_ = conn.Tx(tx, rx)
+			_ = driver.DisableChipSelect(0)
+			time.Sleep(100 * time.Millisecond)
+			value = int16(rx[1])<<8
+
+			tx = []byte{uint8(0x8e), 0, 0}
+			_ = driver.EnableChipSelect(0)
+			_ = conn.Tx(tx, rx)
+			_ = driver.DisableChipSelect(0)
+			time.Sleep(100 * time.Millisecond)
+			value |= int16(rx[1])
+
+			res = append(res, value)
+		}
+	}
+	return res
+}
+
+func GetCurrent(conn spi.Connection) []int16 {
+	tx := make([]byte, 3, 3)
+	rx := make([]byte, 3, 3)
+	res := make([]int16, 0, 12)
+	for i := uint8(0); i < 4; i++ {
+		tx = []byte{uint8(0x0b), 0x04 | i, 0}
+		_ = driver.EnableChipSelect(0)
+		_ = conn.Tx(tx, rx)
+		_ = driver.DisableChipSelect(0)
+		time.Sleep(100 * time.Millisecond)
+
+		for j := uint8(1); j < 7; j += 2 {
+			tx = []byte{uint8(0x0c), j, 0}
+			_ = driver.EnableChipSelect(0)
+			_ = conn.Tx(tx, rx)
+			_ = driver.DisableChipSelect(0)
+			time.Sleep(100 * time.Millisecond)
+
+			var value int16
+			tx = []byte{uint8(0x8d), 0, 0}
+			_ = driver.EnableChipSelect(0)
+			_ = conn.Tx(tx, rx)
+			_ = driver.DisableChipSelect(0)
+			time.Sleep(100 * time.Millisecond)
+			value = int16(rx[1])<<8
+
+			tx = []byte{uint8(0x8e), 0, 0}
+			_ = driver.EnableChipSelect(0)
+			_ = conn.Tx(tx, rx)
+			_ = driver.DisableChipSelect(0)
+			time.Sleep(100 * time.Millisecond)
+			value |= int16(rx[1])
+
+			res = append(res, value)
+		}
+	}
+	return res
 }
