@@ -215,14 +215,14 @@ func GetVoltage(conn spi.Connection) []int16 {
 			_ = conn.Tx(tx, rx)
 			_ = driver.DisableChipSelect(0)
 			time.Sleep(100 * time.Millisecond)
-			value = int16(rx[1])<<8
+			value = int16(rx[2])<<8
 
 			tx = []byte{uint8(0x8e), 0, 0}
 			_ = driver.EnableChipSelect(0)
 			_ = conn.Tx(tx, rx)
 			_ = driver.DisableChipSelect(0)
 			time.Sleep(100 * time.Millisecond)
-			value |= int16(rx[1])
+			value |= int16(rx[2])
 
 			res = append(res, value)
 		}
@@ -254,14 +254,14 @@ func GetCurrent(conn spi.Connection) []int16 {
 			_ = conn.Tx(tx, rx)
 			_ = driver.DisableChipSelect(0)
 			time.Sleep(100 * time.Millisecond)
-			value = int16(rx[1])<<8
+			value = int16(rx[2])<<8
 
 			tx = []byte{uint8(0x8e), 0, 0}
 			_ = driver.EnableChipSelect(0)
 			_ = conn.Tx(tx, rx)
 			_ = driver.DisableChipSelect(0)
 			time.Sleep(100 * time.Millisecond)
-			value |= int16(rx[1])
+			value |= int16(rx[2])
 
 			res = append(res, value)
 		}
