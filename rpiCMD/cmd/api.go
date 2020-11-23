@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/MShoaei/quakeADC/driver"
 	"github.com/MShoaei/quakeADC/driver/xmega"
@@ -93,42 +92,18 @@ func NewAPI() *gin.Engine {
 	return api
 }
 
-var wsOpen bool
-
 func boardInfoHandler(c *gin.Context) {
-	if wsOpen {
-		c.JSON(http.StatusConflict, gin.H{
-			"err": "another connection exists",
-		})
-		return
-	}
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-	if err != nil {
-		log.Println("WebSocket creation error: ", err)
-		return
-	}
 	type message struct {
 		Voltage []int16 `json:"voltage"`
 		Current []int16 `json:"current"`
 	}
-	wsOpen = true
-	conn.SetCloseHandler(func(code int, text string) error {
-		message := websocket.FormatCloseMessage(code, "")
-		conn.WriteControl(websocket.CloseMessage, message, time.Now().Add(time.Second))
-		log.Println(code, text)
-		wsOpen = false
-		return nil
-	})
-	for wsOpen {
-		voltage := xmega.GetVoltage(adcConnection.Connection())
-		current := xmega.GetCurrent(adcConnection.Connection())
-		m := message{
-			Voltage: voltage,
-			Current: current,
-		}
-		conn.WriteJSON(&m)
-		time.Sleep(2 * time.Second)
+	voltage := xmega.GetVoltage(adcConnection.Connection())
+	current := xmega.GetCurrent(adcConnection.Connection())
+	m := message{
+		Voltage: voltage,
+		Current: current,
 	}
+	c.JSON(http.StatusOK, &m)
 }
 
 func setGainsHandler(c *gin.Context) {
