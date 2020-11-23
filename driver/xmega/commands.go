@@ -239,6 +239,10 @@ func GetCurrent(conn spi.Connection) []int16 {
 	rx := make([]byte, 3, 3)
 	res := make([]int16, 0, 12)
 	for i := uint8(0); i < 4; i++ {
+		if i == 1 || i == 2 {
+			res = append(res, 0, 0, 0)
+			continue
+		}
 		tx = []byte{uint8(0x0b), 0x04 | i, 0}
 		_ = driver.EnableChipSelect(0)
 		_ = conn.Tx(tx, rx)
