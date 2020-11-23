@@ -93,7 +93,13 @@ func NewAPI() *gin.Engine {
 	return api
 }
 
+var wsOpen bool
 func boardInfoHandler(c *gin.Context) {
+	if wsOpen {
+		c.JSON(http.StatusConflict,gin.H{
+			"err": "another connection exists",
+		})
+	}
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Println("WebSocket creation error: ", err)
@@ -103,13 +109,13 @@ func boardInfoHandler(c *gin.Context) {
 		Voltage []int16 `json:"voltage"`
 		Current []int16 `json:"current"`
 	}
-	open := true
+	wsOpen = true
 	conn.SetCloseHandler(func(code int, text string) error {
 		log.Println(code, text)
-		open = false
+		wsOpen = false
 		return nil
 	})
-	for open {
+	for wsOpen {
 		voltage := xmega.GetVoltage(adcConnection.Connection())
 		current := xmega.GetCurrent(adcConnection.Connection())
 		m := message{
