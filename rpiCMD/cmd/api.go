@@ -113,6 +113,8 @@ func boardInfoHandler(c *gin.Context) {
 	}
 	wsOpen = true
 	conn.SetCloseHandler(func(code int, text string) error {
+		message := websocket.FormatCloseMessage(code, "")
+		conn.WriteControl(websocket.CloseMessage, message, time.Now().Add(time.Second))
 		log.Println(code, text)
 		wsOpen = false
 		return nil
