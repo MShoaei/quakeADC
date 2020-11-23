@@ -198,6 +198,7 @@ func GetVoltage(conn spi.Connection) []int16 {
 	for i := uint8(0); i < 4; i++ {
 		if i == 1 || i == 2 {
 			res = append(res, 0, 0, 0)
+			return
 		}
 		tx = []byte{uint8(0x0b), 0x04 | i, 0}
 		_ = driver.EnableChipSelect(0)
