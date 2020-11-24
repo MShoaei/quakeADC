@@ -161,7 +161,7 @@ func setChannelsHandler(c *gin.Context) {
 		if i%8 == 0 {
 			adcConnection.ChStandby(opts, uint8(i/8))
 			opts.Channels = [8]bool{}
-			time.Sleep(100*time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 		}
 		if enable {
 			enabledChannels = append(enabledChannels, uint(i))
@@ -256,12 +256,12 @@ func configSamplingTime(st float32) {
 		powerOpt.MCLKDiv = 2
 		interfaceOpt.DclkDiv = 1
 	case 250:
-		chOpt.DecRate = 1256
+		chOpt.DecRate = 256
 		powerOpt.Power = 0
 		powerOpt.MCLKDiv = 0
 		interfaceOpt.DclkDiv = 0
 	case 500:
-		chOpt.DecRate = 128
+		chOpt.DecRate = 512
 		powerOpt.Power = 0
 		powerOpt.MCLKDiv = 0
 		interfaceOpt.DclkDiv = 0
