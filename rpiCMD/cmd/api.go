@@ -33,7 +33,7 @@ var upgrader = websocket.Upgrader{
 
 var sigrokRunning = false
 var dataFile afero.File
-var enabledChannels []uint
+var enabledChannels [24]bool
 
 type usbDevice struct {
 	Name       string      `json:"name"`
@@ -152,7 +152,7 @@ func setChannelsHandler(c *gin.Context) {
 		})
 		return
 	}
-	enabledChannels = []uint{}
+	enabledChannels = [24]bool{}
 	opts := driver.ChStandbyOpts{
 		Write:    true,
 		Channels: [8]bool{},
@@ -163,9 +163,7 @@ func setChannelsHandler(c *gin.Context) {
 			opts.Channels = [8]bool{}
 			time.Sleep(100 * time.Millisecond)
 		}
-		if enable {
-			enabledChannels = append(enabledChannels, uint(i))
-		}
+		enabledChannels[i] = enable
 		opts.Channels[i/8] = enable
 	}
 	c.Status(http.StatusOK)
