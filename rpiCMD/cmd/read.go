@@ -44,10 +44,10 @@ func execSigrokCLI(duration int) error {
 		"--driver=fx2lafw="+driverConnDigits[0], "-O", "binary", "--time", fmt.Sprintf("%d", duration), "-o", tempFilePath1, "--config", "samplerate=24m")
 	//c2 := exec.Command(
 	//	"sigrok-cli",
-	//	"--driver=fx2lafw="+driverConnDigits[0], "-O", "binary", "--time", fmt.Sprintf("%d", duration), "-o", tempFilePath2, "--config", "samplerate=24m")
+	//	"--driver=fx2lafw="+driverConnDigits[1], "-O", "binary", "--time", fmt.Sprintf("%d", duration), "-o", tempFilePath2, "--config", "samplerate=24m")
 	//c3 := exec.Command(
 	//	"sigrok-cli",
-	//	"--driver=fx2lafw="+driverConnDigits[0], "-O", "binary", "--time", fmt.Sprintf("%d", duration), "-o", tempFilePath3, "--config", "samplerate=24m")
+	//	"--driver=fx2lafw="+driverConnDigits[2], "-O", "binary", "--time", fmt.Sprintf("%d", duration), "-o", tempFilePath3, "--config", "samplerate=24m")
 
 	if err := c1.Start(); err != nil {
 		return fmt.Errorf("start 'c1' failed with error: %v", err)
@@ -80,7 +80,7 @@ func execSigrokCLI(duration int) error {
 	//file3, _ := os.Open(tempFilePath3)
 
 	//convert(file1, file2, file3, dataFile, stat1.Size())
-	convert(file1, nil, nil, dataFile, stat1.Size())
+	convert(file1, nil, nil, dataFile, stat1.Size(), enabledChannels)
 	return nil
 }
 
@@ -90,7 +90,7 @@ var (
 	buffer3 = new(bytes.Buffer)
 )
 
-func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.WriteCloser, size int64) {
+func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.WriteCloser, size int64, channels [24]bool) {
 	interruptChan := make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt)
 	go func() {
@@ -105,18 +105,21 @@ func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.
 	}()
 
 	if reader1 != nil {
+		buffer1.Reset()
 		buffer1.Grow(int(size))
 
 	}
 	if reader2 != nil {
+		buffer1.Reset()
 		buffer2.Grow(int(size))
 
 	}
 	if reader3 != nil {
+		buffer1.Reset()
 		buffer3.Grow(int(size))
 	}
 
-	data := make([]uint32, 5, 5)
+	data := make([]uint32, 6, 6)
 	line := make([]byte, 20, 20)
 
 	buffer1.ReadFrom(reader1)
@@ -127,6 +130,7 @@ func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.
 	//bytes2 := buffer2.Bytes()
 	//bytes3 := buffer3.Bytes()
 
+	dataColumn := 0
 	for i := 0; i < len(bytes1)-1; i++ {
 		if bytes1[i]&logic1DataReadyMask == 1 && bytes1[i+1]&logic1DataReadyMask == 0 {
 			for j := 0; j < 8; {
@@ -159,13 +163,24 @@ func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.
 				data[1] |= uint32(bytes1[i]&logic1DataOut1Mask) >> 5 << counter
 				data[2] |= uint32(bytes1[i]&logic1DataOut2Mask) >> 1 << counter
 				data[3] |= uint32(bytes1[i]&logic1DataOut3Mask) >> 2 << counter
-				data[4] |= uint32(bytes1[i]&logic1DataOut5Mask) >> 0 << counter
+				data[5] |= uint32(bytes1[i]&logic1DataOut5Mask) >> 0 << counter
 			}
-			binary.LittleEndian.PutUint32(line[0:4], data[0])
-			binary.LittleEndian.PutUint32(line[4:8], data[1])
-			binary.LittleEndian.PutUint32(line[8:12], data[2])
-			binary.LittleEndian.PutUint32(line[12:16], data[3])
-			binary.LittleEndian.PutUint32(line[16:20], data[4])
+
+			if channels[0+dataColumn] {
+				binary.LittleEndian.PutUint32(line[0:4], data[0])
+			}
+			if channels[1*4+dataColumn] {
+				binary.LittleEndian.PutUint32(line[4:8], data[1])
+			}
+			if channels[2*4+dataColumn] {
+				binary.LittleEndian.PutUint32(line[8:12], data[2])
+			}
+			if channels[3*4+dataColumn] {
+				binary.LittleEndian.PutUint32(line[12:16], data[3])
+			}
+			if channels[5*4+dataColumn] {
+				binary.LittleEndian.PutUint32(line[16:20], data[5])
+			}
 
 			writer.Write(line)
 		}
