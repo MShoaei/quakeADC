@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/MShoaei/quakeADC/driver"
 	"github.com/MShoaei/quakeADC/driver/xmega"
@@ -32,6 +33,7 @@ var upgrader = websocket.Upgrader{
 
 var sigrokRunning = false
 var dataFile afero.File
+var enabledChannels []uint
 
 type usbDevice struct {
 	Name       string      `json:"name"`
@@ -149,6 +151,22 @@ func setChannelsHandler(c *gin.Context) {
 			"err": err.Error(),
 		})
 		return
+	}
+	enabledChannels = []uint{}
+	opts := driver.ChStandbyOpts{
+		Write:    true,
+		Channels: [8]bool{},
+	}
+	for i, enable := range ch {
+		if i%8 == 0 {
+			adcConnection.ChStandby(opts, uint8(i/8))
+			opts.Channels = [8]bool{}
+			time.Sleep(100*time.Millisecond)
+		}
+		if enable {
+			enabledChannels = append(enabledChannels, uint(i))
+		}
+		opts.Channels[i/8] = enable
 	}
 	c.Status(http.StatusOK)
 }
@@ -1340,7 +1358,8 @@ func readDataPostHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"size": info.Size() / 80,
+		"channels": enabledChannels,
+		"size":     info.Size() / 80,
 	})
 }
 
