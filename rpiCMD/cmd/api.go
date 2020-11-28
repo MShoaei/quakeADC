@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"bufio"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -91,6 +94,14 @@ func NewAPI() *gin.Engine {
 	api.POST("/gains", setGainsHandler)
 	api.GET("/info", boardInfoHandler)
 
+	api.PATCH("/multiplier", func(c *gin.Context) {
+		val, err := strconv.Atoi(c.Query("val"))
+		if err != nil {
+			c.String(http.StatusBadRequest, "%v", err)
+		}
+		gainMultiply = uint32(val)
+		c.String(http.StatusOK, "%d", gainMultiply)
+	})
 	return api
 }
 
@@ -108,6 +119,8 @@ func boardInfoHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, &m)
 }
 
+var gainMultiply uint32
+
 func setGainsHandler(c *gin.Context) {
 	const MSBMask uint32 = 0x00ff0000
 	const MidMask uint32 = 0x0000ff00
@@ -118,6 +131,9 @@ func setGainsHandler(c *gin.Context) {
 			"err": err.Error(),
 		})
 		return
+	}
+	for i := 0; i < len(gains); i++ {
+		gains[i] *= gainMultiply
 	}
 	opts := driver.ChannelGainOpts{Write: true}
 	for i := 0; i < len(gains); i++ {
@@ -1317,7 +1333,6 @@ func readDataHandler(c *gin.Context) {
 		_ = conn.Close()
 		return
 	}
-	log.Println(file)
 
 	f, err := dataFS.Open(file)
 	if err != nil {
@@ -1327,8 +1342,19 @@ func readDataHandler(c *gin.Context) {
 		_ = conn.Close()
 		return
 	}
-	b, _ := ioutil.ReadAll(f)
 
+	var channels [24]bool
+	b, _ := ioutil.ReadAll(f)
+	infoBytes, _ := bufio.NewReader(bytes.NewReader(b)).ReadBytes('\n')
+	if err := json.Unmarshal(infoBytes, &channels); err != nil {
+		_ = conn.WriteJSON(gin.H{
+			"error": err.Error(),
+		})
+		_ = conn.Close()
+		return
+	}
+
+	b = b[len(infoBytes):]
 	for i := 0; i < len(b); i += 80 {
 		_ = conn.WriteMessage(websocket.BinaryMessage, b[i:i+80])
 	}
@@ -1355,9 +1381,26 @@ func readDataPostHandler(c *gin.Context) {
 		return
 	}
 
+	f, _ := dataFS.Open(form.File)
+	b, _ := bufio.NewReader(f).ReadBytes('\n')
+	var channels [24]bool
+	if err := json.Unmarshal(b, &channels); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	count := int64(0)
+	for _, enabled := range channels {
+		if enabled {
+			count++
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"channels": enabledChannels,
-		"size":     info.Size() / 80,
+		"channels": channels,
+		"size":     (info.Size() - int64(len(b))) / (count * 4),
 	})
 }
 

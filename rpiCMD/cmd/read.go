@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -79,6 +80,10 @@ func execSigrokCLI(duration int) error {
 	//file2, _ := os.Open(tempFilePath2)
 	//file3, _ := os.Open(tempFilePath3)
 
+	if err := json.NewEncoder(dataFile).Encode(enabledChannels); err != nil {
+		// this should never happen!
+		return fmt.Errorf("error while encoding enabled channels: %v", err)
+	}
 	//convert(file1, file2, file3, dataFile, stat1.Size())
 	convert(file1, nil, nil, dataFile, stat1.Size(), enabledChannels)
 	return nil
@@ -104,6 +109,14 @@ func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.
 		}
 	}()
 
+	defer func() {
+		err := recover()
+		if err != nil {
+			log.Printf("ignoring panic: %v", err)
+		}
+		writer.Close()
+	}()
+
 	if reader1 != nil {
 		buffer1.Reset()
 		buffer1.Grow(int(size))
@@ -120,7 +133,7 @@ func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.
 	}
 
 	data := make([]uint32, 6, 6)
-	line := make([]byte, 20, 20)
+	line := make([]byte, 0, 72*4)
 
 	buffer1.ReadFrom(reader1)
 	//buffer2.ReadFrom(reader2)
@@ -130,59 +143,71 @@ func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.
 	//bytes2 := buffer2.Bytes()
 	//bytes3 := buffer3.Bytes()
 
-	dataColumn := 0
 	for i := 0; i < len(bytes1)-1; i++ {
-		if bytes1[i]&logic1DataReadyMask == 1 && bytes1[i+1]&logic1DataReadyMask == 0 {
-			for j := 0; j < 8; {
-				if bytes1[i]&logic1DataClockMask == 1 && bytes1[i+1]&logic1DataClockMask == 0 {
-					j++
-				}
-				i++
-			}
-			data[0], data[1], data[2], data[3], data[4] = 0, 0, 0, 0, 0
-			if bytes1[i]&logic1DataOut1Mask > 0 {
-				data[0] = 255 << 24
-			}
-			if bytes1[i]&logic1DataOut0Mask > 0 {
-				data[1] = 255 << 24
-			}
-			if bytes1[i]&logic1DataOut3Mask > 0 {
-				data[2] = 255 << 24
-			}
-			if bytes1[i]&logic1DataOut2Mask > 0 {
-				data[3] = 255 << 24
-			}
-			if bytes1[i]&logic1DataOut5Mask > 0 {
-				data[4] = 255 << 24
-			}
-			for counter := 23; counter >= 0; counter-- {
-				for bytes1[i]&logic1DataClockMask == 1 && bytes1[i+1]&logic1DataClockMask == 0 {
+		if bytes1[i]&logic1DataReadyMask == 128 && bytes1[i+1]&logic1DataReadyMask == 0 {
+			for dataColumn := 0; dataColumn < 4; dataColumn++ {
+				for j := 0; j < 8; {
+					if bytes1[i]&logic1DataClockMask == 64 && bytes1[i+1]&logic1DataClockMask == 0 {
+						j++
+					}
 					i++
 				}
-				data[0] |= uint32(bytes1[i]&logic1DataOut0Mask) >> 4 << counter
-				data[1] |= uint32(bytes1[i]&logic1DataOut1Mask) >> 5 << counter
-				data[2] |= uint32(bytes1[i]&logic1DataOut2Mask) >> 1 << counter
-				data[3] |= uint32(bytes1[i]&logic1DataOut3Mask) >> 2 << counter
-				data[5] |= uint32(bytes1[i]&logic1DataOut5Mask) >> 0 << counter
-			}
 
-			if channels[0+dataColumn] {
-				binary.LittleEndian.PutUint32(line[0:4], data[0])
-			}
-			if channels[1*4+dataColumn] {
-				binary.LittleEndian.PutUint32(line[4:8], data[1])
-			}
-			if channels[2*4+dataColumn] {
-				binary.LittleEndian.PutUint32(line[8:12], data[2])
-			}
-			if channels[3*4+dataColumn] {
-				binary.LittleEndian.PutUint32(line[12:16], data[3])
-			}
-			if channels[5*4+dataColumn] {
-				binary.LittleEndian.PutUint32(line[16:20], data[5])
-			}
+				data[0], data[1], data[2], data[3], data[4] = 0, 0, 0, 0, 0
+				for bytes1[i]&logic1DataClockMask != 64 || bytes1[i+1]&logic1DataClockMask != 0 {
+					i++
+				}
+				if bytes1[i+1]&logic1DataOut0Mask == 16 {
+					data[0] = 255 << 24
+				}
+				if bytes1[i+1]&logic1DataOut1Mask == 32 {
+					data[1] = 255 << 24
+				}
+				if bytes1[i]&logic1DataOut2Mask == 2 {
+					data[2] = 255 << 24
+				}
+				if bytes1[i+1]&logic1DataOut3Mask == 4 {
+					data[3] = 255 << 24
+				}
+				if bytes1[i]&logic1DataOut5Mask == 1 {
+					data[5] = 255 << 24
+				}
+				for counter := 23; counter >= 0; counter-- {
+					for bytes1[i]&logic1DataClockMask != 64 || bytes1[i+1]&logic1DataClockMask != 0 {
+						i++
+					}
+					data[0] |= uint32(bytes1[i]&logic1DataOut0Mask) >> 4 << counter
+					data[1] |= uint32(bytes1[i]&logic1DataOut1Mask) >> 5 << counter
+					data[2] |= uint32(bytes1[i]&logic1DataOut2Mask) >> 1 << counter
+					data[3] |= uint32(bytes1[i]&logic1DataOut3Mask) >> 2 << counter
+					data[5] |= uint32(bytes1[i]&logic1DataOut5Mask) >> 0 << counter
+					i++
+				}
 
+				value := make([]byte, 4, 4)
+				if channels[0+dataColumn] {
+					binary.LittleEndian.PutUint32(value, data[0])
+					line = append(line, value...)
+				}
+				if channels[1*4+dataColumn] {
+					binary.LittleEndian.PutUint32(value, data[1])
+					line = append(line, value...)
+				}
+				if channels[2*4+dataColumn] {
+					binary.LittleEndian.PutUint32(value, data[2])
+					line = append(line, value...)
+				}
+				if channels[3*4+dataColumn] {
+					binary.LittleEndian.PutUint32(value, data[3])
+					line = append(line, value...)
+				}
+				if channels[5*4+dataColumn] {
+					binary.LittleEndian.PutUint32(value, data[5])
+					line = append(line, value...)
+				}
+			}
 			writer.Write(line)
+			line = make([]byte, 0, 72*4)
 		}
 	}
 }
