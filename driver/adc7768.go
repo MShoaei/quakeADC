@@ -30,7 +30,10 @@ const (
 	PrechargeBuffer2
 	PositiveReferencePrechargeBuffer
 	NegativeReferencePrechargeBuffer
-	Ch0OffsetMSB
+)
+
+const (
+	Ch0OffsetMSB uint8 = 0x1e + iota
 	Ch0OffsetMid
 	Ch0OffsetLSB
 	Ch1OffsetMSB
