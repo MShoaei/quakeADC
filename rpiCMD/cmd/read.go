@@ -45,15 +45,15 @@ func execSigrokCLI(duration int) error {
 	d, _ = strconv.Atoi(driverConnDigits[0])
 	c1 := exec.Command(
 		"sigrok-cli",
-		"--driver=fx2lafw=1."+strconv.Itoa(d), "-O", "binary", "--time", strconv.Itoa(duration), "-o", tempFilePath1, "--config", "samplerate=24m")
+		"--driver=fx2lafw:conn=1."+strconv.Itoa(d), "-O", "binary", "--time", strconv.Itoa(duration), "-o", tempFilePath1, "--config", "samplerate=24m")
 	//d, _ = strconv.Atoi(driverConnDigits[1])
 	//c2 := exec.Command(
 	//	"sigrok-cli",
-	//	"--driver=fx2lafw=1."+strconv.Itoa(d), "-O", "binary", "--time", strconv.Itoa(duration), "-o", tempFilePath2, "--config", "samplerate=24m")
+	//	"--driver=fx2lafw:conn=1."+strconv.Itoa(d), "-O", "binary", "--time", strconv.Itoa(duration), "-o", tempFilePath2, "--config", "samplerate=24m")
 	//d, _ = strconv.Atoi(driverConnDigits[2])
 	//c3 := exec.Command(
 	//	"sigrok-cli",
-	//	"--driver=fx2lafw=1."+strconv.Itoa(d), "-O", "binary", "--time", strconv.Itoa(duration), "-o", tempFilePath3, "--config", "samplerate=24m")
+	//	"--driver=fx2lafw:conn=1."+strconv.Itoa(d), "-O", "binary", "--time", strconv.Itoa(duration), "-o", tempFilePath3, "--config", "samplerate=24m")
 
 	if err := c1.Start(); err != nil {
 		return fmt.Errorf("start 'c1' failed with error: %v", err)
