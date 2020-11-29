@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path"
+	"strconv"
 )
 
 type FlushWriter interface {
@@ -40,15 +41,19 @@ func execSigrokCLI(duration int) error {
 	tempFilePath1 := path.Join(homePath, "quakeWorkingDir", "temp", "data1.raw")
 	//tempFilePath2 := path.Join(homePath, "quakeWorkingDir", "temp", "data2.raw")
 	//tempFilePath3 := path.Join(homePath, "quakeWorkingDir", "temp", "data3.raw")
+	var d int
+	d, _ = strconv.Atoi(driverConnDigits[0])
 	c1 := exec.Command(
 		"sigrok-cli",
-		"--driver=fx2lafw="+driverConnDigits[0], "-O", "binary", "--time", fmt.Sprintf("%d", duration), "-o", tempFilePath1, "--config", "samplerate=24m")
+		"--driver=fx2lafw=1."+strconv.Itoa(d), "-O", "binary", "--time", strconv.Itoa(duration), "-o", tempFilePath1, "--config", "samplerate=24m")
+	//d, _ = strconv.Atoi(driverConnDigits[1])
 	//c2 := exec.Command(
 	//	"sigrok-cli",
-	//	"--driver=fx2lafw="+driverConnDigits[1], "-O", "binary", "--time", fmt.Sprintf("%d", duration), "-o", tempFilePath2, "--config", "samplerate=24m")
+	//	"--driver=fx2lafw=1."+strconv.Itoa(d), "-O", "binary", "--time", strconv.Itoa(duration), "-o", tempFilePath2, "--config", "samplerate=24m")
+	//d, _ = strconv.Atoi(driverConnDigits[2])
 	//c3 := exec.Command(
 	//	"sigrok-cli",
-	//	"--driver=fx2lafw="+driverConnDigits[2], "-O", "binary", "--time", fmt.Sprintf("%d", duration), "-o", tempFilePath3, "--config", "samplerate=24m")
+	//	"--driver=fx2lafw=1."+strconv.Itoa(d), "-O", "binary", "--time", strconv.Itoa(duration), "-o", tempFilePath3, "--config", "samplerate=24m")
 
 	if err := c1.Start(); err != nil {
 		return fmt.Errorf("start 'c1' failed with error: %v", err)
