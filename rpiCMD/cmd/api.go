@@ -1354,9 +1354,18 @@ func readDataHandler(c *gin.Context) {
 		return
 	}
 
+	count := 0
+	for _, enabled := range channels {
+		if enabled {
+			count++
+		}
+	}
+
 	b = b[len(infoBytes):]
-	for i := 0; i < len(b); i += 80 {
-		_ = conn.WriteMessage(websocket.BinaryMessage, b[i:i+80])
+
+	dataLength := count * 4
+	for i := 0; i < len(b); i += dataLength {
+		_ = conn.WriteMessage(websocket.BinaryMessage, b[i:i+dataLength])
 	}
 	_ = conn.Close()
 }
