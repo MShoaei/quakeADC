@@ -55,6 +55,10 @@ func execSigrokCLI(duration int) error {
 	//	"sigrok-cli",
 	//	"--driver=fx2lafw:conn=1."+strconv.Itoa(d), "-O", "binary", "--time", strconv.Itoa(duration), "-o", tempFilePath3, "--config", "samplerate=24m")
 
+	log.Println(c1.String())
+	// log.Println(c2.String())
+	// log.Println(c3.String())
+
 	if err := c1.Start(); err != nil {
 		return fmt.Errorf("start 'c1' failed with error: %v", err)
 	}
