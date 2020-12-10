@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"time"
 
 	"github.com/MShoaei/quakeADC/driver"
@@ -111,12 +112,7 @@ func DetectLogicConnString(conn spi.Connection) (list []string, err error) {
 	}
 	_ = driver.DisableChipSelect(0)
 	time.Sleep(1 * time.Second)
-
-	devices, err = afero.ReadDir(afero.NewOsFs(), "/dev/bus/usb/001/")
-	if err != nil {
-		return nil, fmt.Errorf("failed to read directory at /dev/bus/usb/001/: %v", err)
-	}
-
+	// --------------------------------------
 	tx = []byte{uint8(0x01), uint8(0x02), 0}
 	_ = driver.EnableChipSelect(0)
 	if err = conn.Tx(tx, rx); err != nil {
@@ -124,12 +120,7 @@ func DetectLogicConnString(conn spi.Connection) (list []string, err error) {
 	}
 	_ = driver.DisableChipSelect(0)
 	time.Sleep(1 * time.Second)
-	devices, err = afero.ReadDir(afero.NewOsFs(), "/dev/bus/usb/001/")
-	if err != nil {
-		return nil, fmt.Errorf("failed to read directory at /dev/bus/usb/001/: %v", err)
-	}
-	list = append(list, devices[len(devices)-1].Name())
-
+	// --------------------------------------
 	tx = []byte{uint8(0x01), uint8(0x06), 0}
 	_ = driver.EnableChipSelect(0)
 	if err = conn.Tx(tx, rx); err != nil {
@@ -137,24 +128,29 @@ func DetectLogicConnString(conn spi.Connection) (list []string, err error) {
 	}
 	_ = driver.DisableChipSelect(0)
 	time.Sleep(1 * time.Second)
-	devices, err = afero.ReadDir(afero.NewOsFs(), "/dev/bus/usb/001/")
-	if err != nil {
-		return nil, fmt.Errorf("failed to read directory at /dev/bus/usb/001/: %v", err)
-	}
-	list = append(list, devices[len(devices)-1].Name())
-
+	// --------------------------------------
 	tx = []byte{uint8(0x01), uint8(0x0e), 0}
 	_ = driver.EnableChipSelect(0)
 	if err = conn.Tx(tx, rx); err != nil {
 		return nil, fmt.Errorf("failed to enable logic 3: %v", err)
 	}
 	_ = driver.DisableChipSelect(0)
+	// --------------------------------------
+	exec.Command("sigrok-cli", "--scan").Run()
 	time.Sleep(1 * time.Second)
+	exec.Command("sigrok-cli", "--scan").Run()
+	time.Sleep(2000 * time.Millisecond)
+
 	devices, err = afero.ReadDir(afero.NewOsFs(), "/dev/bus/usb/001/")
 	if err != nil {
 		return nil, fmt.Errorf("failed to read directory at /dev/bus/usb/001/: %v", err)
 	}
-	list = append(list, devices[len(devices)-1].Name())
+
+	list = []string{
+		devices[2].Name(),
+		devices[3].Name(),
+		// devices[4].Name(),
+	}
 
 	log.Printf("%#v", list)
 
