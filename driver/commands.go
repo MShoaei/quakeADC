@@ -2,6 +2,7 @@ package driver
 
 import (
 	"fmt"
+	"log"
 
 	flag "github.com/spf13/pflag"
 )
@@ -833,7 +834,7 @@ type ChannelOffsetOpts struct {
 	Offset [3]int8
 }
 
-func (adc Adc7768) ChannelOffset(opts ChannelOffsetOpts, cs uint8) (err error) {
+func (adc Adc7768) ChannelOffset(opts ChannelOffsetOpts, cs uint8, debug bool) (err error) {
 	var h uint8
 	tx := make([]byte, 2)
 	rx := make([]byte, 2)
@@ -857,6 +858,9 @@ func (adc Adc7768) ChannelOffset(opts ChannelOffsetOpts, cs uint8) (err error) {
 		if err != nil {
 			return fmt.Errorf("read error: %s", err)
 		}
+		if debug {
+			log.Println(rx)
+		}
 	}
 	return err
 }
@@ -869,7 +873,7 @@ type ChannelGainOpts struct {
 	Offset [3]uint8
 }
 
-func (adc Adc7768) ChannelGain(opts ChannelGainOpts, cs uint8) (err error) {
+func (adc Adc7768) ChannelGain(opts ChannelGainOpts, cs uint8, debug bool) (err error) {
 	var h uint8
 	tx := make([]byte, 2)
 	rx := make([]byte, 2)
@@ -892,6 +896,9 @@ func (adc Adc7768) ChannelGain(opts ChannelGainOpts, cs uint8) (err error) {
 		err = adc.Read(rx, cs)
 		if err != nil {
 			return fmt.Errorf("read error: %s", err)
+		}
+		if debug {
+			log.Println(rx)
 		}
 	}
 	return err

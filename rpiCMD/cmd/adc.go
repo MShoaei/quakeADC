@@ -665,7 +665,7 @@ func newAdcChannelOffsetCommand() *cobra.Command {
 		Long:  "",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return adcConnection.ChannelOffset(options, chipSelect)
+			return adcConnection.ChannelOffset(options, chipSelect, debug)
 		},
 	}
 	f := cmd.Flags()
@@ -687,7 +687,7 @@ func newAdcChGainCommandCommand() *cobra.Command {
 		Long:  "",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return adcConnection.ChannelGain(options, chipSelect)
+			return adcConnection.ChannelGain(options, chipSelect, debug)
 		},
 	}
 	f := cmd.Flags()
