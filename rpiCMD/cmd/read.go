@@ -14,11 +14,6 @@ import (
 	"strconv"
 )
 
-type FlushWriter interface {
-	io.Writer
-	Flush() error
-}
-
 const (
 	logic1DataReadyMask uint8 = 0x80 >> iota
 	logic1DataClockMask
@@ -45,15 +40,15 @@ func execSigrokCLI(duration int) error {
 	d, _ = strconv.Atoi(driverConnDigits[0])
 	c1 := exec.Command(
 		"sigrok-cli",
-		"--driver=fx2lafw:conn=1."+strconv.Itoa(d), "-O", "binary", "--time", strconv.Itoa(duration), "-o", tempFilePath1, "--config", "samplerate=24m")
+		"--driver=fx2lafw:conn=1."+strconv.Itoa(d), "-O", "binary", "-D", "--time", strconv.Itoa(duration), "-o", tempFilePath1, "--config", "samplerate=24m")
 	//d, _ = strconv.Atoi(driverConnDigits[1])
 	//c2 := exec.Command(
 	//	"sigrok-cli",
-	//	"--driver=fx2lafw:conn=1."+strconv.Itoa(d), "-O", "binary", "--time", strconv.Itoa(duration), "-o", tempFilePath2, "--config", "samplerate=24m")
+	//	"--driver=fx2lafw:conn=1."+strconv.Itoa(d), "-O", "binary", "-D", "--time", strconv.Itoa(duration), "-o", tempFilePath2, "--config", "samplerate=24m")
 	//d, _ = strconv.Atoi(driverConnDigits[2])
 	//c3 := exec.Command(
 	//	"sigrok-cli",
-	//	"--driver=fx2lafw:conn=1."+strconv.Itoa(d), "-O", "binary", "--time", strconv.Itoa(duration), "-o", tempFilePath3, "--config", "samplerate=24m")
+	//	"--driver=fx2lafw:conn=1."+strconv.Itoa(d), "-O", "binary", "-D", "--time", strconv.Itoa(duration), "-o", tempFilePath3, "--config", "samplerate=24m")
 
 	log.Println(c1.String())
 	// log.Println(c2.String())
@@ -162,7 +157,7 @@ func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.
 					i++
 				}
 
-				data[0], data[1], data[2], data[3], data[4] = 0, 0, 0, 0, 0
+				data[0], data[1], data[2], data[3], data[5] = 0, 0, 0, 0, 0
 				for bytes1[i]&logic1DataClockMask != 64 || bytes1[i+1]&logic1DataClockMask != 0 {
 					i++
 				}
@@ -172,13 +167,13 @@ func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.
 				if bytes1[i+1]&logic1DataOut1Mask == 32 {
 					data[1] = 255 << 24
 				}
-				if bytes1[i]&logic1DataOut2Mask == 2 {
+				if bytes1[i+1]&logic1DataOut2Mask == 2 {
 					data[2] = 255 << 24
 				}
 				if bytes1[i+1]&logic1DataOut3Mask == 4 {
 					data[3] = 255 << 24
 				}
-				if bytes1[i]&logic1DataOut5Mask == 1 {
+				if bytes1[i+1]&logic1DataOut5Mask == 1 {
 					data[5] = 255 << 24
 				}
 				for counter := 23; counter >= 0; counter-- {
