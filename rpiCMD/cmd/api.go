@@ -73,6 +73,8 @@ func NewAPI() *gin.Engine {
 	api.GET("/status", samplingStatusHandler)
 
 	api.GET("/tree/*dir", treeHandler)
+	api.DELETE("/tree/*path", treeDeleteHandler)
+	api.PATCH("/tree/*path", treePatchHandler)
 
 	api.GET("/plot", readDataHandler)
 	api.POST("/plot", readDataPostHandler)
@@ -119,7 +121,7 @@ func boardInfoHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, &m)
 }
 
-var gainMultiply uint32
+var gainMultiply uint32 = 1000
 
 func setGainsHandler(c *gin.Context) {
 	const MSBMask uint32 = 0x00ff0000
@@ -137,11 +139,12 @@ func setGainsHandler(c *gin.Context) {
 	}
 	opts := driver.ChannelGainOpts{Write: true}
 	for i := 0; i < len(gains); i++ {
-		opts.Channel = uint8(i) - (uint8(i/8) * 8)
-		opts.Offset[0] = uint8(gains[i] & MSBMask)
-		opts.Offset[1] = uint8(gains[i] & MidMask)
+		opts.Channel = uint8(i) % 8
+		opts.Offset[0] = uint8((gains[i] & MSBMask) >> 16)
+		opts.Offset[1] = uint8((gains[i] & MidMask) >> 8)
 		opts.Offset[2] = uint8(gains[i] & LSBMask)
-		if err := adcConnection.ChannelGain(opts, uint8(i/8)+1); err != nil {
+		log.Println(opts.Offset)
+		if err := adcConnection.ChannelGain(opts, uint8(i/8)+1, debug); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"err": err.Error(),
 			})
@@ -245,6 +248,36 @@ func treeHandler(c *gin.Context) {
 		"directory": path.Clean("/" + c.Param("dir")),
 		"items":     fd,
 	})
+}
+
+func treeDeleteHandler(c *gin.Context) {
+	if err := dataFS.RemoveAll(c.Param("path")); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{})
+}
+
+func treePatchHandler(c *gin.Context) {
+	patchReq := struct {
+		NewName string `json:"newName"`
+	}{}
+	if err := c.BindJSON(&patchReq); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	p := c.Param("path")
+	if err := dataFS.Rename(p, path.Join(path.Dir(p), patchReq.NewName)); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{})
 }
 
 func configSamplingTime(st float32) {
@@ -1073,7 +1106,7 @@ func commandHandler(c *gin.Context) {
 			return
 		}
 		if adc != 0 && adc < 10 {
-			err := adcConnection.ChannelOffset(opts, uint8(adc))
+			err := adcConnection.ChannelOffset(opts, uint8(adc), debug)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
@@ -1084,7 +1117,7 @@ func commandHandler(c *gin.Context) {
 			return
 		}
 		for i := uint8(1); i < 10; i++ {
-			err := adcConnection.ChannelOffset(opts, i)
+			err := adcConnection.ChannelOffset(opts, i, debug)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
@@ -1104,7 +1137,7 @@ func commandHandler(c *gin.Context) {
 			return
 		}
 		if adc != 0 && adc < 10 {
-			err := adcConnection.ChannelGain(opts, uint8(adc))
+			err := adcConnection.ChannelGain(opts, uint8(adc), debug)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
@@ -1115,7 +1148,7 @@ func commandHandler(c *gin.Context) {
 			return
 		}
 		for i := uint8(1); i < 10; i++ {
-			err := adcConnection.ChannelGain(opts, i)
+			err := adcConnection.ChannelGain(opts, i, debug)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
