@@ -6,5 +6,4 @@ rpiCMD
 !rpiCMD/
 vendor/
 
-rpiCMD/access.log
-rpiCMD/qADC
+testdata/
