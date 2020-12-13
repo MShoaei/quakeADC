@@ -99,6 +99,9 @@ var (
 	buffer3 = new(bytes.Buffer)
 )
 
+//TODO: unsure about type
+const k float64 = 0.00000048828125 * 1e6 // (4.096/2^23)*1e6
+
 func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.WriteCloser, size int64, channels [24]bool) {
 	interruptChan := make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt)
@@ -190,23 +193,23 @@ func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.
 
 				value := make([]byte, 4, 4)
 				if channels[0+dataColumn] {
-					binary.LittleEndian.PutUint32(value, data[0])
+					binary.LittleEndian.PutUint32(value, uint32(float64(int32(data[0]))*k))
 					line = append(line, value...)
 				}
 				if channels[1*4+dataColumn] {
-					binary.LittleEndian.PutUint32(value, data[1])
+					binary.LittleEndian.PutUint32(value, uint32(float64(int32(data[1]))*k))
 					line = append(line, value...)
 				}
 				if channels[2*4+dataColumn] {
-					binary.LittleEndian.PutUint32(value, data[2])
+					binary.LittleEndian.PutUint32(value, uint32(float64(int32(data[2]))*k))
 					line = append(line, value...)
 				}
 				if channels[3*4+dataColumn] {
-					binary.LittleEndian.PutUint32(value, data[3])
+					binary.LittleEndian.PutUint32(value, uint32(float64(int32(data[3]))*k))
 					line = append(line, value...)
 				}
 				if channels[5*4+dataColumn] {
-					binary.LittleEndian.PutUint32(value, data[5])
+					binary.LittleEndian.PutUint32(value, uint32(float64(int32(data[5]))*k))
 					line = append(line, value...)
 				}
 			}
