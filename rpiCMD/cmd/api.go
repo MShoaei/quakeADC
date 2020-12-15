@@ -48,6 +48,18 @@ type usbDevice struct {
 
 var connectedUSB = map[int]usbDevice{}
 
+type RXResponse []byte
+
+func (r RXResponse) MarshalJSON() ([]byte, error) {
+	var result string
+	if r == nil {
+		result = "null"
+	} else {
+		result = strings.Join(strings.Fields(fmt.Sprintf("%d", r)), ",")
+	}
+	return []byte(result), nil
+}
+
 // NewAPI creates a new API which receives commands and executes them
 // the server should be started with:
 // $ rpiCMD server
@@ -177,13 +189,14 @@ func setChannelsHandler(c *gin.Context) {
 		Channels: [8]bool{},
 	}
 	for i, enable := range ch {
-		if i%8 == 0 {
-			adcConnection.ChStandby(opts, uint8(i/8))
+		enabledChannels[i] = enable
+		opts.Channels[i%8] = !enable
+		if i%8 == 7 {
+			log.Println(opts, uint8(i/8)+1)
+			adcConnection.ChStandby(opts, uint8(i/8)+1)
 			opts.Channels = [8]bool{}
 			time.Sleep(100 * time.Millisecond)
 		}
-		enabledChannels[i] = enable
-		opts.Channels[i/8] = enable
 	}
 	c.Status(http.StatusOK)
 }
@@ -195,14 +208,26 @@ func getChannelsHandler(c *gin.Context) {
 		Write:    false,
 		Channels: [8]bool{},
 	}
-	_, rx, err := adcConnection.ChStandby(opt, 1)
+	_, rx1, err := adcConnection.ChStandby(opt, 1)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"err": err.Error(),
+		})
+	}
+	_, rx2, err := adcConnection.ChStandby(opt, 2)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"err": err.Error(),
+		})
+	}
+	_, rx3, err := adcConnection.ChStandby(opt, 3)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"err": err.Error(),
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"rx": rx,
+		"rx": []RXResponse{RXResponse(rx1), RXResponse(rx2), RXResponse(rx3)},
 	})
 }
 
@@ -340,6 +365,7 @@ func setupHandler(c *gin.Context) {
 		StartMode    string  `json:"startMode"`
 		RecordTime   int     `json:"recordTime"`
 		SamplingTime float32 `json:"samplingTime"`
+		Window       int     `json:"window"`
 		FileName     string  `json:"fileName"`
 		ProjectName  string  `json:"projectName"`
 	}{}
