@@ -100,7 +100,7 @@ var (
 )
 
 //TODO: unsure about type
-const k float64 = 0.00000048828125 * 1e6 // (4.096/2^23)*1e6
+const k float32 = 0.00000048828125 * 1e6 // (4.096/2^23)*1e6
 
 func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.WriteCloser, size int64, channels [24]bool) {
 	interruptChan := make(chan os.Signal, 1)
@@ -139,8 +139,7 @@ func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.
 		buffer3.Grow(int(size))
 	}
 
-	data := make([]uint32, 6, 6)
-	line := make([]byte, 0, 72*4)
+	var line []byte
 
 	buffer1.ReadFrom(reader1)
 	//buffer2.ReadFrom(reader2)
@@ -150,8 +149,14 @@ func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.
 	//bytes2 := buffer2.Bytes()
 	//bytes3 := buffer3.Bytes()
 
+	enChannels := onlyEnabledChannels(channels)
+	line = make([]byte, len(enChannels)*4, len(enChannels)*4)
+
 	for i := 0; i < len(bytes1)-1; i++ {
 		if bytes1[i]&logic1DataReadyMask == 128 && bytes1[i+1]&logic1DataReadyMask == 0 {
+
+			data := make([]uint32, 24, 24)
+
 			for dataColumn := 0; dataColumn < 4; dataColumn++ {
 				for j := 0; j < 8; {
 					if bytes1[i]&logic1DataClockMask == 64 && bytes1[i+1]&logic1DataClockMask == 0 {
@@ -160,63 +165,54 @@ func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.
 					i++
 				}
 
-				data[0], data[1], data[2], data[3], data[5] = 0, 0, 0, 0, 0
 				for bytes1[i]&logic1DataClockMask != 64 || bytes1[i+1]&logic1DataClockMask != 0 {
 					i++
 				}
+				offset := dataColumn * 6
 				if bytes1[i+1]&logic1DataOut0Mask == 16 {
-					data[0] = 255 << 24
+					data[0+offset] = 255 << 24
 				}
 				if bytes1[i+1]&logic1DataOut1Mask == 32 {
-					data[1] = 255 << 24
+					data[1+offset] = 255 << 24
 				}
 				if bytes1[i+1]&logic1DataOut2Mask == 2 {
-					data[2] = 255 << 24
+					data[2+offset] = 255 << 24
 				}
 				if bytes1[i+1]&logic1DataOut3Mask == 4 {
-					data[3] = 255 << 24
+					data[3+offset] = 255 << 24
 				}
 				if bytes1[i+1]&logic1DataOut5Mask == 1 {
-					data[5] = 255 << 24
+					data[5+offset] = 255 << 24
 				}
 				for counter := 23; counter >= 0; counter-- {
 					for bytes1[i]&logic1DataClockMask != 64 || bytes1[i+1]&logic1DataClockMask != 0 {
 						i++
 					}
-					data[0] |= uint32(bytes1[i]&logic1DataOut0Mask) >> 4 << counter
-					data[1] |= uint32(bytes1[i]&logic1DataOut1Mask) >> 5 << counter
-					data[2] |= uint32(bytes1[i]&logic1DataOut2Mask) >> 1 << counter
-					data[3] |= uint32(bytes1[i]&logic1DataOut3Mask) >> 2 << counter
-					data[5] |= uint32(bytes1[i]&logic1DataOut5Mask) >> 0 << counter
+					data[0+offset] |= uint32(bytes1[i]&logic1DataOut0Mask) >> 4 << counter
+					data[1+offset] |= uint32(bytes1[i]&logic1DataOut1Mask) >> 5 << counter
+					data[2+offset] |= uint32(bytes1[i]&logic1DataOut2Mask) >> 1 << counter
+					data[3+offset] |= uint32(bytes1[i]&logic1DataOut3Mask) >> 2 << counter
+					data[5+offset] |= uint32(bytes1[i]&logic1DataOut5Mask) >> 0 << counter
 					i++
 				}
-
-				value := make([]byte, 4, 4)
-				if channels[0+dataColumn] {
-					binary.LittleEndian.PutUint32(value, uint32(float64(int32(data[0]))*k))
-					line = append(line, value...)
-				}
-				if channels[1*4+dataColumn] {
-					binary.LittleEndian.PutUint32(value, uint32(float64(int32(data[1]))*k))
-					line = append(line, value...)
-				}
-				if channels[2*4+dataColumn] {
-					binary.LittleEndian.PutUint32(value, uint32(float64(int32(data[2]))*k))
-					line = append(line, value...)
-				}
-				if channels[3*4+dataColumn] {
-					binary.LittleEndian.PutUint32(value, uint32(float64(int32(data[3]))*k))
-					line = append(line, value...)
-				}
-				if channels[5*4+dataColumn] {
-					binary.LittleEndian.PutUint32(value, uint32(float64(int32(data[5]))*k))
-					line = append(line, value...)
-				}
+			}
+			for _, index := range enChannels {
+				binary.LittleEndian.PutUint32(line[index*4:], uint32(int32(float32(int32(data[(index*6)%24+(index/4)]))*k)))
 			}
 			writer.Write(line)
-			line = make([]byte, 0, 72*4)
+
 		}
 	}
+}
+
+func onlyEnabledChannels(channels [24]bool) []int {
+	res := make([]int, 0, 24)
+	for i, enabled := range channels {
+		if enabled {
+			res = append(res, i)
+		}
+	}
+	return res
 }
 
 func init() {
