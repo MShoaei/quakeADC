@@ -37,11 +37,11 @@ func execSigrokCLI(duration int) error {
 	//tempFilePath2 := path.Join(homePath, "quakeWorkingDir", "temp", "data2.raw")
 	//tempFilePath3 := path.Join(homePath, "quakeWorkingDir", "temp", "data3.raw")
 	var d int
-	d, _ = strconv.Atoi(driverConnDigits[0])
+	d, _ = strconv.Atoi(driverConnDigits[1])
 	c1 := exec.Command(
 		"sigrok-cli",
 		"--driver=fx2lafw:conn=1."+strconv.Itoa(d), "-O", "binary", "-D", "--time", strconv.Itoa(duration), "-o", tempFilePath1, "--config", "samplerate=24m")
-	//d, _ = strconv.Atoi(driverConnDigits[1])
+	//d, _ = strconv.Atoi(driverConnDigits[0])
 	//c2 := exec.Command(
 	//	"sigrok-cli",
 	//	"--driver=fx2lafw:conn=1."+strconv.Itoa(d), "-O", "binary", "-D", "--time", strconv.Itoa(duration), "-o", tempFilePath2, "--config", "samplerate=24m")
@@ -84,12 +84,12 @@ func execSigrokCLI(duration int) error {
 	//file2, _ := os.Open(tempFilePath2)
 	//file3, _ := os.Open(tempFilePath3)
 
-	if err := json.NewEncoder(dataFile).Encode(enabledChannels); err != nil {
+	if err := json.NewEncoder(dataFile).Encode(hd); err != nil {
 		// this should never happen!
 		return fmt.Errorf("error while encoding enabled channels: %v", err)
 	}
 	//convert(file1, file2, file3, dataFile, stat1.Size())
-	convert(file1, nil, nil, dataFile, stat1.Size(), enabledChannels)
+	convert(file1, nil, nil, dataFile, stat1.Size(), hd.EnabledChannels)
 	return nil
 }
 
@@ -196,8 +196,8 @@ func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.
 					i++
 				}
 			}
-			for _, index := range enChannels {
-				binary.LittleEndian.PutUint32(line[index*4:], uint32(int32(float32(int32(data[(index*6)%24+(index/4)]))*k)))
+			for index, value := range enChannels {
+				binary.LittleEndian.PutUint32(line[index*4:], uint32(int32(float32(int32(data[(value*6)%24+(value/4)]))*k)))
 			}
 			writer.Write(line)
 
