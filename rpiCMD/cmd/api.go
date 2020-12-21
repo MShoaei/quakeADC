@@ -5,12 +5,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -36,7 +38,13 @@ var upgrader = websocket.Upgrader{
 
 var sigrokRunning = false
 var dataFile afero.File
-var enabledChannels [24]bool
+
+type headerData struct {
+	EnabledChannels [24]bool `json:"EnabledChannels"`
+	Window          int      `json:"Window"`
+}
+
+var hd headerData
 
 type usbDevice struct {
 	Name       string      `json:"name"`
@@ -45,8 +53,6 @@ type usbDevice struct {
 	Size       string      `json:"size"`
 	Children   []usbDevice `json:"children"`
 }
-
-var connectedUSB = map[int]usbDevice{}
 
 type RXResponse []byte
 
@@ -99,7 +105,7 @@ func NewAPI() *gin.Engine {
 
 	api.PATCH("/update", updateStack)
 
-	api.GET("/usb/all", getAllUSB)
+	// api.GET("/usb/all", getAllUSB)
 	api.POST("/rpi/shutdown", shutdownSequenceHandler)
 	api.POST("/rpi/restart", restartSequenceHandler)
 	api.GET("/channels", getChannelsHandler)
@@ -107,6 +113,9 @@ func NewAPI() *gin.Engine {
 	api.GET("/gains", getGainsHandler)
 	api.POST("/gains", setGainsHandler)
 	api.GET("/info", boardInfoHandler)
+
+	api.POST("/save/project", saveProjectFolder)
+	api.POST("/save/sample", saveSampleFile)
 
 	api.PATCH("/multiplier", func(c *gin.Context) {
 		val, err := strconv.Atoi(c.Query("val"))
@@ -117,6 +126,142 @@ func NewAPI() *gin.Engine {
 		c.String(http.StatusOK, "%d", gainMultiply)
 	})
 	return api
+}
+
+func saveSampleFile(c *gin.Context) {
+	const pathPrefix = "HITECH"
+	data := struct {
+		File string `json:"file"`
+	}{}
+	if err := c.BindJSON(&data); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"err": err.Error(),
+		})
+		return
+	}
+
+	connectedUSB := getAllUSB()
+	if connectedUSB[0].MountPoint == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"err": "No USB connected",
+		})
+		return
+	}
+
+	requestedFile, err := dataFS.Open(data.File)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"err": err.Error(),
+		})
+		return
+	}
+
+	usbFS := afero.NewBasePathFs(afero.NewOsFs(), connectedUSB[0].MountPoint)
+	_ = usbFS.Mkdir(pathPrefix, os.ModeDir|0755)
+	if exists, _ := afero.DirExists(usbFS, pathPrefix); !exists {
+		c.JSON(http.StatusConflict, gin.H{
+			"err": "a file with name 'HITECH' exists on USB device.",
+		})
+		return
+	}
+
+	usbFS = afero.NewBasePathFs(usbFS, pathPrefix)
+	if fileExists, _ := afero.Exists(usbFS, data.File); fileExists {
+		c.JSON(http.StatusConflict, gin.H{
+			"err": "file exists.",
+		})
+		return
+	}
+	usbFS.MkdirAll(path.Dir(data.File), os.ModeDir|0755)
+	f, err := usbFS.Create(data.File)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"err": err.Error(),
+		})
+		return
+	}
+
+	io.Copy(f, requestedFile)
+	c.JSON(http.StatusOK, gin.H{
+		"files": []string{data.File},
+	})
+}
+
+//-------------------------------------
+func saveProjectFolder(c *gin.Context) {
+	const pathPrefix = "HITECH"
+	data := struct {
+		Project string `json:"project"`
+	}{}
+	if err := c.BindJSON(&data); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"err": err.Error(),
+		})
+		return
+	}
+
+	connectedUSB := getAllUSB()
+	if connectedUSB[0].MountPoint == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"err": "No USB connected",
+		})
+		return
+	}
+
+	if exists, _ := afero.DirExists(dataFS, data.Project); !exists {
+		c.JSON(http.StatusNotFound, gin.H{
+			"err": "requested folder does not exist",
+		})
+		return
+	}
+
+	usbFS := afero.NewBasePathFs(afero.NewOsFs(), connectedUSB[0].MountPoint)
+	_ = usbFS.Mkdir(pathPrefix, os.ModeDir|0755)
+	if exists, _ := afero.DirExists(usbFS, pathPrefix); !exists {
+		c.JSON(http.StatusConflict, gin.H{
+			"err": "a file with name 'HITECH' exists on USB device.",
+		})
+		return
+	}
+
+	usbFS = afero.NewBasePathFs(usbFS, pathPrefix)
+	usbFS.MkdirAll(path.Dir(data.Project+"/"), os.ModeDir|0755)
+	if empty, _ := afero.IsEmpty(usbFS, data.Project); !empty {
+		c.JSON(http.StatusConflict, gin.H{
+			"err": "project path already exists",
+		})
+		return
+	}
+
+	copiedList := make([]string, 0)
+	err := afero.Walk(dataFS, path.Dir(data.Project+"/"), func(srcPath string, f os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		switch mode := f.Mode(); {
+		case mode.IsRegular():
+			r, _ := dataFS.Open(srcPath)
+			w, _ := usbFS.Create(srcPath)
+			if _, err := io.Copy(w, r); err != nil {
+				return err
+			}
+			copiedList = append(copiedList, srcPath)
+		case mode.IsDir():
+			if err := usbFS.Mkdir(srcPath, f.Mode()); err != nil && !os.IsExist(err) {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		c.JSON(http.StatusConflict, gin.H{
+			"err": err.Error,
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"files": copiedList,
+	})
 }
 
 func boardInfoHandler(c *gin.Context) {
@@ -183,15 +328,18 @@ func setChannelsHandler(c *gin.Context) {
 		})
 		return
 	}
-	enabledChannels = [24]bool{}
+	hd.EnabledChannels = [24]bool{}
 	opts := driver.ChStandbyOpts{
 		Write:    true,
 		Channels: [8]bool{},
 	}
 	for i, enable := range ch {
-		enabledChannels[i] = enable
+		hd.EnabledChannels[i] = enable
 		opts.Channels[i%8] = !enable
 		if i%8 == 7 {
+			if i < 8 {
+				opts.Channels[0] = false
+			}
 			log.Println(opts, uint8(i/8)+1)
 			adcConnection.ChStandby(opts, uint8(i/8)+1)
 			opts.Channels = [8]bool{}
@@ -375,6 +523,14 @@ func setupHandler(c *gin.Context) {
 		})
 		return
 	}
+	log.Println(setupData)
+	if setupData.Window < 1 || setupData.Window > 100 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid window size. Should be between 1 and 100",
+		})
+		return
+	}
+	hd.Window = setupData.Window
 
 	if setupData.FileName == "" || setupData.ProjectName == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -1402,10 +1558,10 @@ func readDataHandler(c *gin.Context) {
 		return
 	}
 
-	var channels [24]bool
+	var header headerData
 	b, _ := ioutil.ReadAll(f)
 	infoBytes, _ := bufio.NewReader(bytes.NewReader(b)).ReadBytes('\n')
-	if err := json.Unmarshal(infoBytes, &channels); err != nil {
+	if err := json.Unmarshal(infoBytes, &header); err != nil {
 		_ = conn.WriteJSON(gin.H{
 			"error": err.Error(),
 		})
@@ -1414,7 +1570,7 @@ func readDataHandler(c *gin.Context) {
 	}
 
 	count := 0
-	for _, enabled := range channels {
+	for _, enabled := range header.EnabledChannels {
 		if enabled {
 			count++
 		}
@@ -1451,23 +1607,25 @@ func readDataPostHandler(c *gin.Context) {
 
 	f, _ := dataFS.Open(form.File)
 	b, _ := bufio.NewReader(f).ReadBytes('\n')
-	var channels [24]bool
-	if err := json.Unmarshal(b, &channels); err != nil {
+	var header headerData
+	if err := json.Unmarshal(b, &header); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
+	log.Println(header)
 
 	count := int64(0)
-	for _, enabled := range channels {
+	for _, enabled := range header.EnabledChannels {
 		if enabled {
 			count++
 		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"channels": channels,
+		"channels": header.EnabledChannels,
+		"window":   header.Window,
 		"size":     (info.Size() - int64(len(b))) / (count * 4),
 	})
 }
@@ -1492,7 +1650,7 @@ func loginOptionsHandler(c *gin.Context) {
 	//c.Header("Allow", "OPTIONS, POST")
 }
 
-func getAllUSB(c *gin.Context) {
+func getAllUSB() map[int]usbDevice {
 	var allDevices []usbDevice
 	status := <-cmd.NewCmd("lsblk", "-o", "NAME,LABEL,SIZE,MOUNTPOINT", "-J").Start()
 	str := strings.Builder{}
@@ -1508,15 +1666,13 @@ func getAllUSB(c *gin.Context) {
 		log.Printf("unmarshal error: %v", err)
 	}
 
-	//for i, dev := range allDevices {
-	//	for _, child := range dev.Children {
-	//		if match, _ := regexp.MatchString(`^/media.*`, child.MountPoint); match {
-	//			connectedUSB[i] = child
-	//		}
-	//	}
-	//}
-
-	c.JSON(http.StatusOK, gin.H{
-		"devices": connectedUSB,
-	})
+	connectedUSB := map[int]usbDevice{}
+	for i, dev := range allDevices {
+		for _, child := range dev.Children {
+			if match, _ := regexp.MatchString(`^/media.*`, child.MountPoint); match {
+				connectedUSB[i] = child
+			}
+		}
+	}
+	return connectedUSB
 }
