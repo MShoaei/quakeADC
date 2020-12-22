@@ -165,10 +165,11 @@ func saveSampleFile(c *gin.Context) {
 		return
 	}
 
+	force := strings.ToLower(c.Query("force")) != "" && strings.ToLower(c.Query("force")) == "true"
 	usbFS = afero.NewBasePathFs(usbFS, pathPrefix)
-	if fileExists, _ := afero.Exists(usbFS, data.File); fileExists {
+	if fileExists, _ := afero.Exists(usbFS, data.File); fileExists && !force {
 		c.JSON(http.StatusConflict, gin.H{
-			"err": "file exists.",
+			"err": "file exists and not forced",
 		})
 		return
 	}
@@ -224,11 +225,12 @@ func saveProjectFolder(c *gin.Context) {
 		return
 	}
 
+	force := strings.ToLower(c.Query("force")) != "" && strings.ToLower(c.Query("force")) == "true"
 	usbFS = afero.NewBasePathFs(usbFS, pathPrefix)
 	usbFS.MkdirAll(path.Dir(data.Project+"/"), os.ModeDir|0755)
-	if empty, _ := afero.IsEmpty(usbFS, data.Project); !empty {
+	if empty, _ := afero.IsEmpty(usbFS, data.Project); !empty && !force {
 		c.JSON(http.StatusConflict, gin.H{
-			"err": "project path already exists",
+			"err": "project path already exists and not forced",
 		})
 		return
 	}
