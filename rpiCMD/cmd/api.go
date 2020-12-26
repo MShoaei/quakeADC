@@ -135,7 +135,7 @@ func saveSampleFile(c *gin.Context) {
 	}{}
 	if err := c.BindJSON(&data); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"err": err.Error(),
+			"error": err.Error(),
 		})
 		return
 	}
@@ -143,7 +143,7 @@ func saveSampleFile(c *gin.Context) {
 	connectedUSB := getAllUSB()
 	if connectedUSB[0].MountPoint == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"err": "No USB connected",
+			"error": "No USB connected",
 		})
 		return
 	}
@@ -151,7 +151,7 @@ func saveSampleFile(c *gin.Context) {
 	requestedFile, err := dataFS.Open(data.File)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"err": err.Error(),
+			"error": err.Error(),
 		})
 		return
 	}
@@ -160,7 +160,7 @@ func saveSampleFile(c *gin.Context) {
 	_ = usbFS.Mkdir(pathPrefix, os.ModeDir|0755)
 	if exists, _ := afero.DirExists(usbFS, pathPrefix); !exists {
 		c.JSON(http.StatusConflict, gin.H{
-			"err": "a file with name 'HITECH' exists on USB device.",
+			"error": "a file with name 'HITECH' exists on USB device.",
 		})
 		return
 	}
@@ -169,7 +169,7 @@ func saveSampleFile(c *gin.Context) {
 	usbFS = afero.NewBasePathFs(usbFS, pathPrefix)
 	if fileExists, _ := afero.Exists(usbFS, data.File); fileExists && !force {
 		c.JSON(http.StatusConflict, gin.H{
-			"err": "file exists and not forced",
+			"error": "file exists and not forced",
 		})
 		return
 	}
@@ -177,7 +177,7 @@ func saveSampleFile(c *gin.Context) {
 	f, err := usbFS.Create(data.File)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"err": err.Error(),
+			"error": err.Error(),
 		})
 		return
 	}
@@ -196,7 +196,7 @@ func saveProjectFolder(c *gin.Context) {
 	}{}
 	if err := c.BindJSON(&data); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"err": err.Error(),
+			"error": err.Error(),
 		})
 		return
 	}
@@ -204,14 +204,14 @@ func saveProjectFolder(c *gin.Context) {
 	connectedUSB := getAllUSB()
 	if connectedUSB[0].MountPoint == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"err": "No USB connected",
+			"error": "No USB connected",
 		})
 		return
 	}
 
 	if exists, _ := afero.DirExists(dataFS, data.Project); !exists {
 		c.JSON(http.StatusNotFound, gin.H{
-			"err": "requested folder does not exist",
+			"error": "requested folder does not exist",
 		})
 		return
 	}
@@ -220,7 +220,7 @@ func saveProjectFolder(c *gin.Context) {
 	_ = usbFS.Mkdir(pathPrefix, os.ModeDir|0755)
 	if exists, _ := afero.DirExists(usbFS, pathPrefix); !exists {
 		c.JSON(http.StatusConflict, gin.H{
-			"err": "a file with name 'HITECH' exists on USB device.",
+			"error": "a file with name 'HITECH' exists on USB device.",
 		})
 		return
 	}
@@ -230,7 +230,7 @@ func saveProjectFolder(c *gin.Context) {
 	usbFS.MkdirAll(path.Dir(data.Project+"/"), os.ModeDir|0755)
 	if empty, _ := afero.IsEmpty(usbFS, data.Project); !empty && !force {
 		c.JSON(http.StatusConflict, gin.H{
-			"err": "project path already exists and not forced",
+			"error": "project path already exists and not forced",
 		})
 		return
 	}
@@ -257,7 +257,7 @@ func saveProjectFolder(c *gin.Context) {
 	})
 	if err != nil {
 		c.JSON(http.StatusConflict, gin.H{
-			"err": err.Error,
+			"error": err.Error,
 		})
 		return
 	}
@@ -289,7 +289,7 @@ func setGainsHandler(c *gin.Context) {
 	gains := [24]uint32{}
 	if err := c.BindJSON(&gains); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"err": err.Error(),
+			"error": err.Error(),
 		})
 		return
 	}
@@ -305,7 +305,7 @@ func setGainsHandler(c *gin.Context) {
 		log.Println(opts.Offset)
 		if err := adcConnection.ChannelGain(opts, uint8(i/8)+1, debug); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"err": err.Error(),
+				"error": err.Error(),
 			})
 			return
 		}
@@ -326,7 +326,7 @@ func setChannelsHandler(c *gin.Context) {
 	ch := [24]bool{}
 	if err := c.BindJSON(&ch); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"err": err.Error(),
+			"error": err.Error(),
 		})
 		return
 	}
@@ -361,19 +361,19 @@ func getChannelsHandler(c *gin.Context) {
 	_, rx1, err := adcConnection.ChStandby(opt, 1)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"err": err.Error(),
+			"error": err.Error(),
 		})
 	}
 	_, rx2, err := adcConnection.ChStandby(opt, 2)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"err": err.Error(),
+			"error": err.Error(),
 		})
 	}
 	_, rx3, err := adcConnection.ChStandby(opt, 3)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"err": err.Error(),
+			"error": err.Error(),
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -577,7 +577,7 @@ func commandHandler(c *gin.Context) {
 	adc, err := strconv.ParseUint(c.Param("adc"), 10, 8)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"err": err.Error(),
+			"error": err.Error(),
 		})
 		return
 	}
@@ -1545,7 +1545,7 @@ func readDataHandler(c *gin.Context) {
 	var file string
 	if file = c.Query("file"); file == "" {
 		_ = conn.WriteJSON(gin.H{
-			"err": "invalid query parameter value",
+			"error": "invalid query parameter value",
 		})
 		_ = conn.Close()
 		return
@@ -1554,7 +1554,7 @@ func readDataHandler(c *gin.Context) {
 	f, err := dataFS.Open(file)
 	if err != nil {
 		_ = conn.WriteJSON(gin.H{
-			"err": fmt.Errorf("failed to open file: %v", err),
+			"error": fmt.Errorf("failed to open file: %v", err),
 		})
 		_ = conn.Close()
 		return
@@ -1602,7 +1602,7 @@ func readDataPostHandler(c *gin.Context) {
 	info, err := dataFS.Stat(form.File)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"err": fmt.Errorf("failed to open file: %v", err),
+			"error": fmt.Errorf("failed to open file: %v", err),
 		})
 		return
 	}
