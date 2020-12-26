@@ -9,10 +9,9 @@ require (
 	github.com/go-cmd/cmd v1.2.1
 	github.com/go-playground/validator/v10 v10.4.1 // indirect
 	github.com/golang/protobuf v1.4.3 // indirect
-	github.com/google/gousb v1.1.1 // indirect
+	github.com/google/gousb v1.1.1
 	github.com/gorilla/websocket v1.4.2
 	github.com/json-iterator/go v1.1.10 // indirect
-	github.com/otiai10/copy v1.3.0 // indirect
 	github.com/spf13/afero v1.4.1
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
