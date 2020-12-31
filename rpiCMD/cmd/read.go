@@ -130,7 +130,7 @@ func execSigrokCLI(duration int) error {
 		return fmt.Errorf("error while encoding enabled channels: %v", err)
 	}
 	//convert(file1, file2, file3, dataFile, stat1.Size())
-	convert(file1, nil, nil, dataFile, stat1.Size(), hd.EnabledChannels)
+	convert(file1, nil, nil, dataFile, int(stat1.Size()), hd.EnabledChannels)
 	return nil
 }
 
@@ -143,7 +143,7 @@ var (
 //TODO: unsure about type
 const k float32 = 0.00000048828125 * 1e6 // (4.096/2^23)*1e6
 
-func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.WriteCloser, size int64, channels [24]bool) {
+func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.WriteCloser, size int, channels [24]bool) {
 	interruptChan := make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt)
 	go func() {

@@ -188,7 +188,6 @@ func saveSampleFile(c *gin.Context) {
 	})
 }
 
-//-------------------------------------
 func saveProjectFolder(c *gin.Context) {
 	const pathPrefix = "HITECH"
 	data := struct {
@@ -512,12 +511,13 @@ func setupHandler(c *gin.Context) {
 		return
 	}
 	setupData := struct {
-		StartMode    string  `json:"startMode"`
-		RecordTime   int     `json:"recordTime"`
-		SamplingTime float32 `json:"samplingTime"`
-		Window       int     `json:"window"`
-		FileName     string  `json:"fileName"`
-		ProjectName  string  `json:"projectName"`
+		StartMode        string  `json:"startMode"`
+		TriggerThreshold int     `json:"threshold"`
+		RecordTime       int     `json:"recordTime"`
+		SamplingTime     float32 `json:"samplingTime"`
+		Window           int     `json:"window"`
+		FileName         string  `json:"fileName"`
+		ProjectName      string  `json:"projectName"`
 	}{}
 	if err := c.BindJSON(&setupData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -556,17 +556,33 @@ func setupHandler(c *gin.Context) {
 
 	dataFile, _ = dataFS.Create(filepath.Join(setupData.ProjectName, setupData.FileName))
 
-	configSamplingTime(setupData.SamplingTime)
-	SendSyncSignal()
-	xmega.SamplingStart(adcConnection.Connection())
-	defer xmega.SamplingEnd(adcConnection.Connection())
-	if err := execSigrokCLI(setupData.RecordTime); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
+	switch strings.ToLower(setupData.StartMode) {
+	case "asap":
+		configSamplingTime(setupData.SamplingTime)
+		SendSyncSignal()
+		xmega.SamplingStart(adcConnection.Connection())
+		defer xmega.SamplingEnd(adcConnection.Connection())
+		if err := execSigrokCLI(setupData.RecordTime); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+		c.JSON(http.StatusOK, nil)
+	case "hammer":
+		configSamplingTime(setupData.SamplingTime)
+		SendSyncSignal()
+		xmega.SamplingStart(adcConnection.Connection())
+		defer xmega.SamplingEnd(adcConnection.Connection())
+		rawData := readWithThreshold(setupData.TriggerThreshold, setupData.RecordTime)
+		convert(bytes.NewReader(rawData), nil, nil, dataFile, len(rawData), hd.EnabledChannels)
+		return
+	case "trigger":
+		c.JSON(http.StatusNotImplemented, gin.H{
+			"error": "not implemented",
 		})
 		return
 	}
-	c.JSON(http.StatusOK, nil)
 }
 
 func updateStack(_ *gin.Context) {
