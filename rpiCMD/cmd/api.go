@@ -569,13 +569,28 @@ func setupHandler(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusOK, nil)
+		return
 	case "hammer":
 		configSamplingTime(setupData.SamplingTime)
 		SendSyncSignal()
 		xmega.SamplingStart(adcConnection.Connection())
 		defer xmega.SamplingEnd(adcConnection.Connection())
 		rawData := readWithThreshold(setupData.TriggerThreshold, setupData.RecordTime)
+		if rawData == nil {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "did not reach threshold",
+			})
+			return
+		}
+		if err := json.NewEncoder(dataFile).Encode(hd); err != nil {
+			// this should never happen!
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": fmt.Errorf("error while encoding enabled channels: %v", err).Error(),
+			})
+			return
+		}
 		convert(bytes.NewReader(rawData), nil, nil, dataFile, len(rawData), hd.EnabledChannels)
+		c.JSON(http.StatusOK, nil)
 		return
 	case "trigger":
 		c.JSON(http.StatusNotImplemented, gin.H{
