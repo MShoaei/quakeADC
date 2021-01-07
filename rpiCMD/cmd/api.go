@@ -40,8 +40,9 @@ var sigrokRunning = false
 var dataFile afero.File
 
 type headerData struct {
-	EnabledChannels [24]bool `json:"EnabledChannels"`
-	Window          int      `json:"Window"`
+	EnabledChannels [24]bool   `json:"EnabledChannels"`
+	Gains           [24]uint32 `json:"Gains"`
+	Window          int        `json:"Window"`
 }
 
 var hd headerData
@@ -302,18 +303,21 @@ func setGainsHandler(c *gin.Context) {
 		opts.Offset[1] = uint8((gains[i] & MidMask) >> 8)
 		opts.Offset[2] = uint8(gains[i] & LSBMask)
 		log.Println(opts.Offset)
-		if err := adcConnection.ChannelGain(opts, uint8(i/8)+1, debug); err != nil {
+		if _, err := adcConnection.ChannelGain(opts, uint8(i/8)+1, debug); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": err.Error(),
 			})
 			return
 		}
 	}
+	hd.Gains = gains
 	c.JSON(http.StatusOK, nil)
 }
 
 func getGainsHandler(c *gin.Context) {
-
+	c.JSON(http.StatusOK, gin.H{
+		"gains": hd.Gains,
+	})
 }
 
 func restartSequenceHandler(c *gin.Context) {
@@ -328,6 +332,12 @@ func setChannelsHandler(c *gin.Context) {
 			"error": err.Error(),
 		})
 		return
+	}
+
+	force := false
+	if !(ch[0] || ch[1] || ch[2] || ch[3]) {
+		ch[0] = true
+		force = true
 	}
 	hd.EnabledChannels = [24]bool{}
 	opts := driver.ChStandbyOpts{
@@ -347,36 +357,16 @@ func setChannelsHandler(c *gin.Context) {
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
+	if force {
+		hd.EnabledChannels[0] = false
+	}
 	c.Status(http.StatusOK)
 }
 
 func getChannelsHandler(c *gin.Context) {
-	ch := [24]bool{}
-	ch[0] = true
-	opt := driver.ChStandbyOpts{
-		Write:    false,
-		Channels: [8]bool{},
-	}
-	_, rx1, err := adcConnection.ChStandby(opt, 1)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
-	}
-	_, rx2, err := adcConnection.ChStandby(opt, 2)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
-	}
-	_, rx3, err := adcConnection.ChStandby(opt, 3)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
-	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"rx": []RXResponse{RXResponse(rx1), RXResponse(rx2), RXResponse(rx3)},
+		"channels": hd.EnabledChannels,
 	})
 }
 
@@ -1352,7 +1342,7 @@ func commandHandler(c *gin.Context) {
 			return
 		}
 		if adc != 0 && adc < 10 {
-			err := adcConnection.ChannelGain(opts, uint8(adc), debug)
+			_, err := adcConnection.ChannelGain(opts, uint8(adc), debug)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
@@ -1363,7 +1353,7 @@ func commandHandler(c *gin.Context) {
 			return
 		}
 		for i := uint8(1); i < 10; i++ {
-			err := adcConnection.ChannelGain(opts, i, debug)
+			_, err := adcConnection.ChannelGain(opts, i, debug)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
