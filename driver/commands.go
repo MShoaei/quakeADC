@@ -873,16 +873,16 @@ type ChannelGainOpts struct {
 	Offset [3]uint8
 }
 
-func (adc Adc7768) ChannelGain(opts ChannelGainOpts, cs uint8, debug bool) (err error) {
+func (adc Adc7768) ChannelGain(opts ChannelGainOpts, cs uint8, debug bool) (rx []byte, err error) {
 	var h uint8
 	tx := make([]byte, 2)
-	rx := make([]byte, 2)
+	rx = make([]byte, 2*3)
 
 	if !opts.Write {
 		h = h | 0x80
 	}
 	if opts.Channel < 0 || opts.Channel > 7 {
-		return fmt.Errorf("invalid channel: %s", err)
+		return nil, fmt.Errorf("invalid channel: %s", err)
 	}
 
 	register := Ch0GainMSB + (opts.Channel * 3)
@@ -891,17 +891,18 @@ func (adc Adc7768) ChannelGain(opts ChannelGainOpts, cs uint8, debug bool) (err 
 
 		err = adc.Write(tx, cs)
 		if err != nil {
-			return fmt.Errorf("write error: %s", err)
+			return nil, fmt.Errorf("write error: %s", err)
 		}
-		err = adc.Read(rx, cs)
+		err = adc.Read(rx[i*2:i*2+2], cs)
 		if err != nil {
-			return fmt.Errorf("read error: %s", err)
+			return nil, fmt.Errorf("read error: %s", err)
 		}
+
 		if debug {
 			log.Println(rx)
 		}
 	}
-	return err
+	return rx, nil
 }
 
 type ChannelSyncOffsetOpts struct {

@@ -687,7 +687,8 @@ func newAdcChGainCommandCommand() *cobra.Command {
 		Long:  "",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return adcConnection.ChannelGain(options, chipSelect, debug)
+			_, err := adcConnection.ChannelGain(options, chipSelect, debug)
+			return err
 		},
 	}
 	f := cmd.Flags()
