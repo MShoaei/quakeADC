@@ -19,6 +19,7 @@ import (
 
 	"github.com/MShoaei/quakeADC/driver"
 	"github.com/MShoaei/quakeADC/driver/xmega"
+	"github.com/MShoaei/quakeADC/seg2"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-cmd/cmd"
@@ -129,6 +130,35 @@ func NewAPI() *gin.Engine {
 	return api
 }
 
+func extractData(src io.Reader) ([][]byte, error) {
+	var header headerData
+	b, _ := ioutil.ReadAll(src)
+	infoBytes, _ := bufio.NewReader(bytes.NewReader(b)).ReadBytes('\n')
+	if err := json.Unmarshal(infoBytes, &header); err != nil {
+		return nil, err
+	}
+	b = b[len(infoBytes):]
+	count := 0
+	for i := 0; i < len(header.EnabledChannels); i++ {
+		if !header.EnabledChannels[i] {
+			continue
+		}
+		count++
+	}
+
+	res := make([][]byte, count)
+	for i := 0; i < len(res); i++ {
+		res[i] = make([]byte, 0, len(b)/4)
+	}
+
+	for i := 0; i < count; i++ {
+		for j := i * 4; j < len(b); j += count * 4 {
+			res[i] = append(res[i], b[j], b[j+1], b[j+2], b[j+3])
+		}
+	}
+	return res, nil
+}
+
 func saveSampleFile(c *gin.Context) {
 	const pathPrefix = "HITECH"
 	data := struct {
@@ -175,7 +205,7 @@ func saveSampleFile(c *gin.Context) {
 		return
 	}
 	usbFS.MkdirAll(path.Dir(data.File), os.ModeDir|0755)
-	f, err := usbFS.Create(data.File)
+	dst, err := usbFS.Create(data.File + ".DAT")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -183,7 +213,17 @@ func saveSampleFile(c *gin.Context) {
 		return
 	}
 
-	io.Copy(f, requestedFile)
+	byteRes, err := extractData(requestedFile)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	traces := seg2.NewTraceDescriptor(make([]string, len(byteRes)), byteRes, seg2.Fixed32)
+	w := seg2.NewWriter(time.Now(), int16(len(traces)), "")
+	_ = w.Write(dst, traces)
 	c.JSON(http.StatusOK, gin.H{
 		"files": []string{data.File},
 	})
@@ -242,11 +282,15 @@ func saveProjectFolder(c *gin.Context) {
 		}
 		switch mode := f.Mode(); {
 		case mode.IsRegular():
-			r, _ := dataFS.Open(srcPath)
-			w, _ := usbFS.Create(srcPath)
-			if _, err := io.Copy(w, r); err != nil {
+			src, _ := dataFS.Open(srcPath)
+			dst, _ := usbFS.Create(srcPath + ".DAT")
+			byteRes, err := extractData(src)
+			if err != nil {
 				return err
 			}
+			traces := seg2.NewTraceDescriptor(make([]string, len(byteRes)), byteRes, seg2.Fixed32)
+			w := seg2.NewWriter(time.Now(), int16(len(traces)), "")
+			_ = w.Write(dst, traces)
 			copiedList = append(copiedList, srcPath)
 		case mode.IsDir():
 			if err := usbFS.Mkdir(srcPath, f.Mode()); err != nil && !os.IsExist(err) {
