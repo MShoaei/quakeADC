@@ -57,13 +57,13 @@ func NewTraceDescriptor(info []string, data [][]byte, format dataFormat) []*trac
 			info[i] = info[i] + string(make([]byte, (4-len(info[i])%4), (4-len(info[i])%4)))
 		}
 
-		if len(data)%4 != 0 {
+		if len(data[i])%4 != 0 {
 			data[i] = append(data[i], make([]byte, 4-len(data[i])%4, 4-len(data[i])%4)...)
 		}
 		result = append(result, &traceDescriptorBlock{
-			x:      uint16(32 + len(info)),
-			y:      uint32(len(data)),
-			ns:     uint32(len(data) / format.size()),
+			x:      uint16(32 + len(info[i])),
+			y:      uint32(len(data[i])),
+			ns:     uint32(len(data[i]) / format.size()),
 			format: format,
 			info:   info[i],
 			data:   data[i],

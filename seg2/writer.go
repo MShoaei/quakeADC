@@ -88,9 +88,9 @@ func (w *writer) writeFileHeader() {
 	w.buf = append(w.buf, byte(firstLineTerminatorChar))
 	w.buf = append(w.buf, byte(secondLineTerminatorChar))
 
-	w.buf = append(w.buf, make([]byte, 16, 16)...)
+	w.buf = append(w.buf, make([]byte, 18, 18)...)
 
-	w.buf = append(w.buf, make([]byte, 4*w.n, 4*w.n)...)
+	w.buf = append(w.buf, make([]byte, 4*72, 4*72)...)
 
 	w.buf = append(w.buf, w.note...)
 }
