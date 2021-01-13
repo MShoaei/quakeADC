@@ -547,6 +547,7 @@ func setupHandler(c *gin.Context) {
 	setupData := struct {
 		StartMode        string  `json:"startMode"`
 		TriggerThreshold int     `json:"threshold"`
+		TriggerChannel   int     `json:"triggerChannel"`
 		RecordTime       int     `json:"recordTime"`
 		SamplingTime     float32 `json:"samplingTime"`
 		Window           int     `json:"window"`
@@ -609,7 +610,7 @@ func setupHandler(c *gin.Context) {
 		SendSyncSignal()
 		xmega.SamplingStart(adcConnection.Connection())
 		defer xmega.SamplingEnd(adcConnection.Connection())
-		rawData := readWithThreshold(setupData.TriggerThreshold, setupData.RecordTime)
+		rawData := readWithThreshold(setupData.TriggerThreshold, setupData.RecordTime, setupData.TriggerChannel)
 		if rawData == nil {
 			c.JSON(http.StatusNotFound, gin.H{
 				"error": "did not reach threshold",

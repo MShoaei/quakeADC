@@ -14,7 +14,7 @@ var (
 	tempBuf  = make([]byte, tempSize*maxPacketSize, tempSize*maxPacketSize)
 )
 
-func readWithThreshold(threshold int, duration int) []byte {
+func readWithThreshold(threshold int, duration int, channel int) []byte {
 	ctx := gousb.NewContext()
 	defer ctx.Close()
 	vid, pid := gousb.ID(0x0925), gousb.ID(0x3881)
@@ -78,20 +78,42 @@ func readWithThreshold(threshold int, duration int) []byte {
 	size := duration * 24000 / 512
 	buf := make([]byte, size*maxPacketSize, size*maxPacketSize)
 
+	clockSkip = (channel%4)*32 + 8
+	mask := uint8(0)
+	switch channel / 4 {
+	case 0:
+		mask = logic1DataOut0Mask
+		shift = 4
+	case 1:
+		mask = logic1DataOut1Mask
+		shift = 5
+	case 2:
+		mask = logic1DataOut2Mask
+		shift = 1
+	case 3:
+		mask = logic1DataOut3Mask
+		shift = 2
+	case 5:
+		mask = logic1DataOut5Mask
+		shift = 0
+	}
+
 	i := 0
 	thresholdReached := false
+
+	threshold = int(int32(float32(threshold) / k))
 	for i < tempSize-1 {
 		_, err := stream.Read(tempBuf[i*maxPacketSize : (i+1)*maxPacketSize])
 		if err != nil {
 			log.Fatal(err)
 		}
 		if i == 0 {
-			if checkThreshold(tempBuf[i*maxPacketSize:(i+1)*maxPacketSize], threshold) {
+			if checkThreshold(tempBuf[i*maxPacketSize:(i+1)*maxPacketSize], threshold, mask) {
 				thresholdReached = true
 				break
 			}
 		} else {
-			if checkThreshold(tempBuf[i*maxPacketSize-1:(i+1)*maxPacketSize], threshold) {
+			if checkThreshold(tempBuf[i*maxPacketSize-1:(i+1)*maxPacketSize], threshold, mask) {
 				thresholdReached = true
 				break
 			}
@@ -111,7 +133,6 @@ func readWithThreshold(threshold int, duration int) []byte {
 
 	i = 0
 	start := time.Now()
-	fmt.Println("data ready:", drdyCount, start)
 	for i < size {
 		_, err := stream.Read(buf[i*maxPacketSize : (i+1)*maxPacketSize])
 		if err != nil {
@@ -131,11 +152,12 @@ func readWithThreshold(threshold int, duration int) []byte {
 
 // var f, _ = os.Create("/home/pi/Desktop/threshold2.raw")
 var monitoredChannelVal uint32
-var drdyCount int = 0
 
 var hammerClockCounter = -1
+var clockSkip int
+var shift int
 
-func checkThreshold(b []byte, threshold int) bool {
+func checkThreshold(b []byte, threshold int, mask uint8) bool {
 	defer func() {
 		_ = recover()
 		// err := recover()
@@ -143,38 +165,34 @@ func checkThreshold(b []byte, threshold int) bool {
 		// 	log.Printf("ignoring panic: %v", err)
 		// }
 	}()
-	tempVar := 0
 	for i := 0; i < len(b)-1; i++ {
-		tempVar++
 		if hammerClockCounter != -1 || ((b[i]&logic1DataReadyMask == 128) && (b[i+1]&logic1DataReadyMask == 0)) {
-			// fmt.Println(drdyCount, hammerClockCounter, i)
 			if hammerClockCounter == -1 {
 				hammerClockCounter = 0
-				drdyCount++
 			}
-			if hammerClockCounter < 9 {
-				for j := hammerClockCounter; j < 8; {
-					if b[i]&logic1DataClockMask == 64 && b[i+1]&logic1DataClockMask == 0 {
+			if hammerClockCounter < clockSkip+1 {
+				for j := hammerClockCounter; j < clockSkip; {
+					if b[i]&mask == mask && b[i+1]&mask == 0 {
 						j++
 						hammerClockCounter++
 					}
 					i++
 				}
-				for b[i]&logic1DataClockMask != 64 || b[i+1]&logic1DataClockMask != 0 {
+				for b[i]&mask != mask || b[i+1]&mask != 0 {
 					i++
 				}
 				hammerClockCounter++
-				if b[i+1]&logic1DataOut0Mask == 16 {
+				if b[i+1]&mask == mask {
 					monitoredChannelVal = 255 << 24
 				}
 			}
 
 			for counter := 32 - hammerClockCounter; counter >= 0; counter-- {
-				for b[i]&logic1DataClockMask != 64 || b[i+1]&logic1DataClockMask != 0 {
+				for b[i]&mask != mask || b[i+1]&mask != 0 {
 					i++
 				}
 				hammerClockCounter++
-				monitoredChannelVal |= uint32(b[i]&logic1DataOut0Mask) >> 4 << counter
+				monitoredChannelVal |= uint32(b[i]&mask) >> shift << counter
 				i++
 			}
 			hammerClockCounter = -1
