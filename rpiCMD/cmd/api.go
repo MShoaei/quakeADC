@@ -337,15 +337,16 @@ func setGainsHandler(c *gin.Context) {
 		})
 		return
 	}
-	for i := 0; i < len(gains); i++ {
-		gains[i] *= gainMultiply
-	}
+	// for i := 0; i < len(gains); i++ {
+	// 	gains[i] *= gainMultiply
+	// }
 	opts := driver.ChannelGainOpts{Write: true}
 	for i := 0; i < len(gains); i++ {
 		opts.Channel = uint8(i) % 8
-		opts.Offset[0] = uint8((gains[i] & MSBMask) >> 16)
-		opts.Offset[1] = uint8((gains[i] & MidMask) >> 8)
-		opts.Offset[2] = uint8(gains[i] & LSBMask)
+		val := gains[i] * gainMultiply
+		opts.Offset[0] = uint8((val & MSBMask) >> 16)
+		opts.Offset[1] = uint8((val & MidMask) >> 8)
+		opts.Offset[2] = uint8(val & LSBMask)
 		log.Println(opts.Offset)
 		if _, err := adcConnection.ChannelGain(opts, uint8(i/8)+1, debug); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{

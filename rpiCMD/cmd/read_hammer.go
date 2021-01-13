@@ -77,7 +77,7 @@ func readWithThreshold(threshold int, duration int, channel int) []byte {
 
 	size := duration * 24000 / 512
 	buf := make([]byte, size*maxPacketSize, size*maxPacketSize)
-
+	fmt.Println("Channel: ", channel)
 	clockSkip = (channel%4)*32 + 8
 	mask := uint8(0)
 	switch channel / 4 {
@@ -101,7 +101,8 @@ func readWithThreshold(threshold int, duration int, channel int) []byte {
 	i := 0
 	thresholdReached := false
 
-	threshold = int(int32(float32(threshold) / k))
+	// threshold = int(int32(float32(threshold) / k))
+	log.Println(int(int32(threshold)))
 	for i < tempSize-1 {
 		_, err := stream.Read(tempBuf[i*maxPacketSize : (i+1)*maxPacketSize])
 		if err != nil {
@@ -133,6 +134,7 @@ func readWithThreshold(threshold int, duration int, channel int) []byte {
 
 	i = 0
 	start := time.Now()
+	fmt.Println(start)
 	for i < size {
 		_, err := stream.Read(buf[i*maxPacketSize : (i+1)*maxPacketSize])
 		if err != nil {
@@ -172,13 +174,13 @@ func checkThreshold(b []byte, threshold int, mask uint8) bool {
 			}
 			if hammerClockCounter < clockSkip+1 {
 				for j := hammerClockCounter; j < clockSkip; {
-					if b[i]&mask == mask && b[i+1]&mask == 0 {
+					if b[i]&logic1DataClockMask == 64 && b[i+1]&logic1DataClockMask == 0 {
 						j++
 						hammerClockCounter++
 					}
 					i++
 				}
-				for b[i]&mask != mask || b[i+1]&mask != 0 {
+				for b[i]&logic1DataClockMask != 64 || b[i+1]&logic1DataClockMask != 0 {
 					i++
 				}
 				hammerClockCounter++
@@ -187,8 +189,8 @@ func checkThreshold(b []byte, threshold int, mask uint8) bool {
 				}
 			}
 
-			for counter := 32 - hammerClockCounter; counter >= 0; counter-- {
-				for b[i]&mask != mask || b[i+1]&mask != 0 {
+			for counter := clockSkip + 24 - hammerClockCounter; counter >= 0; counter-- {
+				for b[i]&logic1DataClockMask != 64 || b[i+1]&logic1DataClockMask != 0 {
 					i++
 				}
 				hammerClockCounter++

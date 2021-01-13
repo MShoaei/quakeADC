@@ -238,7 +238,8 @@ func convert(reader1 io.Reader, reader2 io.Reader, reader3 io.Reader, writer io.
 				}
 			}
 			for index, value := range enChannels {
-				binary.LittleEndian.PutUint32(line[index*4:], uint32(int32(float32(int32(data[(value*6)%24+(value/4)]))*k)))
+				// binary.LittleEndian.PutUint32(line[index*4:], uint32(int32(float32(int32(data[(value*6)%24+(value/4)]))*k)))
+				binary.LittleEndian.PutUint32(line[index*4:], uint32(int32(int32(data[(value*6)%24+(value/4)]))))
 			}
 			writer.Write(line)
 		}
