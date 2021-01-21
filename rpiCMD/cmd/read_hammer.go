@@ -44,7 +44,7 @@ func readWithThreshold(threshold int, duration int, channel int) []byte {
 
 	cmd := cmdStartAcquisition{}
 	cmd.Flags = cmdStartFlagsCLK48MHZ
-	cmd.Flags |= cmdSTartFlagsSample8Bit
+	cmd.Flags |= cmdStartFlagsSample8Bit
 	cmd.Flags |= 0 // not using analog channels
 	cmd.SampleDelayH = (delay >> 8) & 0xff
 	cmd.SampleDelayL = delay & 0xff

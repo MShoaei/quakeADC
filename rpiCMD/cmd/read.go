@@ -21,7 +21,7 @@ import (
 
 const (
 	cmdStartFlagsCLK48MHZ   uint8 = 1 << 6
-	cmdSTartFlagsSample8Bit uint8 = 0 << 5
+	cmdStartFlagsSample8Bit uint8 = 0 << 5
 	delay                   uint8 = 1
 )
 
@@ -288,7 +288,7 @@ func monitorLive(w io.WriteCloser, samples int) {
 
 	cmd := cmdStartAcquisition{}
 	cmd.Flags = cmdStartFlagsCLK48MHZ
-	cmd.Flags |= cmdSTartFlagsSample8Bit
+	cmd.Flags |= cmdStartFlagsSample8Bit
 	cmd.Flags |= 0 // not using analog channels
 	cmd.SampleDelayH = (delay >> 8) & 0xff
 	cmd.SampleDelayL = delay & 0xff
