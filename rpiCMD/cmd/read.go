@@ -36,7 +36,7 @@ const (
 	logic1DataClockMask
 	logic1DataOut1Mask
 	logic1DataOut0Mask
-	logic1SyncMask
+	logic1DataOut4Mask
 	logic1DataOut3Mask
 	logic1DataOut2Mask
 	logic1DataOut5Mask
@@ -78,7 +78,7 @@ func execSigrokCLI(duration int) error {
 	//tempFilePath2 := path.Join(homePath, "quakeWorkingDir", "temp", "data2.raw")
 	//tempFilePath3 := path.Join(homePath, "quakeWorkingDir", "temp", "data3.raw")
 	var d int
-	d, _ = strconv.Atoi(driverConnDigits[1])
+	d, _ = strconv.Atoi(driverConnDigits[0])
 	c1 := exec.Command(
 		"sigrok-cli",
 		"--driver=fx2lafw:conn=1."+strconv.Itoa(d), "-O", "binary", "-D", "--time", strconv.Itoa(duration), "-o", tempFilePath1, "--config", "samplerate=24m")
