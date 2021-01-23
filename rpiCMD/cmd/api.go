@@ -99,7 +99,7 @@ func NewAPI() *gin.Engine {
 	api.GET("/plot", readDataHandler)
 	api.POST("/plot", readDataPostHandler)
 
-	api.GET("/plot/:file", plotHandler)
+	api.GET("/dl/*path", downloadSampleHandler)
 
 	api.POST("/setup", setupHandler)
 	api.POST("/command/:cmd/:adc", commandHandler)
@@ -129,6 +129,85 @@ func NewAPI() *gin.Engine {
 		c.String(http.StatusOK, "%d", gainMultiply)
 	})
 	return api
+}
+
+func downloadSampleHandler(c *gin.Context) {
+	fileType, exists := c.GetQuery("type")
+	if !exists {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "requested file type not specified",
+		})
+		return
+	}
+	fileType = strings.ToLower(fileType)
+	switch fileType {
+	case "seg2", "raw":
+		break
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid file type",
+		})
+		return
+	}
+
+	dir, err := afero.IsDir(dataFS, "/"+c.Param("path"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	if dir {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid path. path is a directory",
+		})
+		return
+	}
+
+	requestedFile, err := dataFS.Open("/" + c.Param("path"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	switch fileType {
+	case "seg2":
+		byteRes, err := extractData(requestedFile)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+		traces := seg2.NewTraceDescriptor(make([]string, len(byteRes)), byteRes, seg2.Fixed32)
+		w := seg2.NewWriter(time.Now(), int16(len(traces)), "")
+		f, err := memFS.Create(requestedFile.Name() + ".DAT")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+		err = w.Write(f, traces)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+		var fs http.FileSystem = afero.NewHttpFs(memFS)
+		c.Writer.Header().Set("content-disposition", fmt.Sprintf("attachment; filename=\"%s\"", path.Base(f.Name())))
+		c.FileFromFS(f.Name(), fs)
+		memFS.Remove(f.Name())
+		return
+	case "raw":
+		var fs http.FileSystem = afero.NewHttpFs(dataFS)
+		c.Writer.Header().Set("content-disposition", fmt.Sprintf("attachment; filename=\"%s\"", path.Base(requestedFile.Name())))
+		c.FileFromFS(requestedFile.Name(), fs)
+		return
+	}
 }
 
 func getAllUSBHandler(c *gin.Context) {
@@ -431,24 +510,6 @@ func getChannelsHandler(c *gin.Context) {
 
 func shutdownSequenceHandler(c *gin.Context) {
 	xmega.Shutdown(adcConnection.Connection())
-}
-
-func plotHandler(c *gin.Context) {
-	dir, err := afero.IsDir(dataFS, "/"+c.Param("file"))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-	if dir {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid path. path is a directory",
-		})
-		return
-	}
-	f, _ := dataFS.Open("/" + c.Param("file"))
-	c.File(f.Name() + ".bin")
 }
 
 func treeHandler(c *gin.Context) {
