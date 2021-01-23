@@ -107,7 +107,8 @@ func NewAPI() *gin.Engine {
 
 	api.PATCH("/update", updateStack)
 
-	// api.GET("/usb/all", getAllUSB)
+	api.GET("/usb", getAllUSBHandler)
+
 	api.POST("/rpi/shutdown", shutdownSequenceHandler)
 	api.POST("/rpi/restart", restartSequenceHandler)
 	api.GET("/channels", getChannelsHandler)
@@ -128,6 +129,19 @@ func NewAPI() *gin.Engine {
 		c.String(http.StatusOK, "%d", gainMultiply)
 	})
 	return api
+}
+
+func getAllUSBHandler(c *gin.Context) {
+	devices, err := getAllUSB()
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"devices": devices,
+	})
 }
 
 func extractData(src io.Reader) ([][]byte, error) {
@@ -171,8 +185,8 @@ func saveSampleFile(c *gin.Context) {
 		return
 	}
 
-	connectedUSB := getAllUSB()
-	if connectedUSB[0].MountPoint == "" {
+	connectedUSB, err := getAllUSB()
+	if connectedUSB.MountPoint == "" || err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "No USB connected",
 		})
@@ -187,7 +201,7 @@ func saveSampleFile(c *gin.Context) {
 		return
 	}
 
-	usbFS := afero.NewBasePathFs(afero.NewOsFs(), connectedUSB[0].MountPoint)
+	usbFS := afero.NewBasePathFs(afero.NewOsFs(), connectedUSB.MountPoint)
 	_ = usbFS.Mkdir(pathPrefix, os.ModeDir|0755)
 	if exists, _ := afero.DirExists(usbFS, pathPrefix); !exists {
 		c.JSON(http.StatusConflict, gin.H{
@@ -241,8 +255,8 @@ func saveProjectFolder(c *gin.Context) {
 		return
 	}
 
-	connectedUSB := getAllUSB()
-	if connectedUSB[0].MountPoint == "" {
+	connectedUSB, err := getAllUSB()
+	if connectedUSB.MountPoint == "" || err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "No USB connected",
 		})
@@ -256,7 +270,7 @@ func saveProjectFolder(c *gin.Context) {
 		return
 	}
 
-	usbFS := afero.NewBasePathFs(afero.NewOsFs(), connectedUSB[0].MountPoint)
+	usbFS := afero.NewBasePathFs(afero.NewOsFs(), connectedUSB.MountPoint)
 	_ = usbFS.Mkdir(pathPrefix, os.ModeDir|0755)
 	if exists, _ := afero.DirExists(usbFS, pathPrefix); !exists {
 		c.JSON(http.StatusConflict, gin.H{
@@ -276,7 +290,7 @@ func saveProjectFolder(c *gin.Context) {
 	}
 
 	copiedList := make([]string, 0)
-	err := afero.Walk(dataFS, path.Dir(data.Project+"/"), func(srcPath string, f os.FileInfo, err error) error {
+	err = afero.Walk(dataFS, path.Dir(data.Project+"/"), func(srcPath string, f os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -1719,7 +1733,7 @@ func loginOptionsHandler(c *gin.Context) {
 	//c.Header("Allow", "OPTIONS, POST")
 }
 
-func getAllUSB() map[int]usbDevice {
+func getAllUSB() (usbDevice, error) {
 	var allDevices []usbDevice
 	status := <-cmd.NewCmd("lsblk", "-o", "NAME,LABEL,SIZE,MOUNTPOINT", "-J").Start()
 	str := strings.Builder{}
@@ -1735,13 +1749,38 @@ func getAllUSB() map[int]usbDevice {
 		log.Printf("unmarshal error: %v", err)
 	}
 
-	connectedUSB := map[int]usbDevice{}
-	for i, dev := range allDevices {
+	var connectedUSB usbDevice
+	for _, dev := range allDevices {
 		for _, child := range dev.Children {
-			if match, _ := regexp.MatchString(`^/media.*`, child.MountPoint); match {
-				connectedUSB[i] = child
+			if match, _ := regexp.MatchString(`^/(media|mnt).*`, child.MountPoint); match {
+				connectedUSB = child
+				return connectedUSB, nil
 			}
 		}
 	}
-	return connectedUSB
+
+	if connectedUSB.MountPoint == "" {
+		for _, dev := range allDevices {
+			if strings.Contains(dev.Name, "mmcblk0") {
+				continue
+			}
+			for _, child := range dev.Children {
+				if child.Children != nil {
+					continue
+				}
+				status = <-cmd.NewCmd("/usr/bin/sudo", "mount", path.Join("/", "dev", child.Name), "/mnt").Start()
+				if status.Exit == 0 {
+					child.MountPoint = "/mnt"
+					connectedUSB = child
+					return connectedUSB, nil
+				}
+			}
+		}
+	}
+	return connectedUSB, status.Error
+}
+
+func init() {
+	<-cmd.NewCmd("/usr/bin/sudo", "umount", "/mnt").Start()
+	_, _ = getAllUSB()
 }
