@@ -173,6 +173,7 @@ func downloadSampleHandler(c *gin.Context) {
 		})
 		return
 	}
+	defer requestedFile.Close()
 
 	switch fileType {
 	case "seg2":
@@ -192,6 +193,8 @@ func downloadSampleHandler(c *gin.Context) {
 			})
 			return
 		}
+		defer f.Close()
+
 		err = w.Write(f, traces)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
@@ -316,6 +319,7 @@ func saveSampleFile(c *gin.Context) {
 		})
 		return
 	}
+	defer requestedFile.Close()
 
 	usbFS := afero.NewBasePathFs(afero.NewOsFs(), connectedUSB.MountPoint)
 	_ = usbFS.Mkdir(pathPrefix, os.ModeDir|0755)
@@ -342,6 +346,8 @@ func saveSampleFile(c *gin.Context) {
 		})
 		return
 	}
+	defer dst.Close()
+
 	switch fileType {
 	case "seg2":
 		byteRes, err := extractData(requestedFile)
@@ -440,6 +446,9 @@ func saveProjectFolder(c *gin.Context) {
 		case mode.IsRegular():
 			src, _ := dataFS.Open(srcPath)
 			dst, _ := usbFS.Create(srcPath + fileExtension)
+			defer src.Close()
+			defer dst.Close()
+
 			switch fileType {
 			case "seg2":
 				byteRes, err := extractData(src)
@@ -738,6 +747,7 @@ func setupHandler(c *gin.Context) {
 	}
 
 	dataFile, _ = dataFS.Create(filepath.Join(setupData.ProjectName, setupData.FileName))
+	defer dataFile.Close()
 
 	switch strings.ToLower(setupData.StartMode) {
 	case "asap":
@@ -1773,6 +1783,7 @@ func readDataHandler(c *gin.Context) {
 		_ = conn.Close()
 		return
 	}
+	defer f.Close()
 
 	var header headerData
 	b, _ := ioutil.ReadAll(f)
@@ -1830,7 +1841,7 @@ func readDataPostHandler(c *gin.Context) {
 		})
 		return
 	}
-	log.Println(header)
+	defer f.Close()
 
 	count := int64(0)
 	for _, enabled := range header.EnabledChannels {
@@ -1885,7 +1896,7 @@ func getAllUSB() (usbDevice, error) {
 	var connectedUSB usbDevice
 	for _, dev := range allDevices {
 		for _, child := range dev.Children {
-			if match, _ := regexp.MatchString(`^/(media|mnt).*`, child.MountPoint); match {
+			if match, _ := regexp.MatchString(`^/(media|mnt/USB).*`, child.MountPoint); match {
 				connectedUSB = child
 				return connectedUSB, nil
 			}
@@ -1901,7 +1912,7 @@ func getAllUSB() (usbDevice, error) {
 				if child.Children != nil {
 					continue
 				}
-				status = <-cmd.NewCmd("/usr/bin/sudo", "mount", path.Join("/", "dev", child.Name), "/mnt").Start()
+				status = <-cmd.NewCmd("/usr/bin/sudo", "mount", "-o", "uid=pi,gid=pi", path.Join("/", "dev", child.Name), "/mnt/USB").Start()
 				if status.Exit == 0 {
 					child.MountPoint = "/mnt"
 					connectedUSB = child
@@ -1914,6 +1925,6 @@ func getAllUSB() (usbDevice, error) {
 }
 
 func init() {
-	<-cmd.NewCmd("/usr/bin/sudo", "umount", "/mnt").Start()
+	<-cmd.NewCmd("/usr/bin/sudo", "umount", "/mnt/USB").Start()
 	_, _ = getAllUSB()
 }
