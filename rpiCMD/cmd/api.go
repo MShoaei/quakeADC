@@ -99,7 +99,9 @@ func NewAPI() *gin.Engine {
 	api.GET("/plot", readDataHandler)
 	api.POST("/plot", readDataPostHandler)
 
-	api.GET("/dl/*path", downloadSampleHandler)
+	api.GET("/dl/*path", func(c *gin.Context) {
+		c.Header("cache-control", "no-store, max-age=0")
+	}, downloadSampleHandler)
 
 	api.POST("/setup", setupHandler)
 	api.POST("/command/:cmd/:adc", commandHandler)
@@ -204,7 +206,7 @@ func downloadSampleHandler(c *gin.Context) {
 		return
 	case "raw":
 		var fs http.FileSystem = afero.NewHttpFs(dataFS)
-		c.Writer.Header().Set("content-disposition", fmt.Sprintf("attachment; filename=\"%s\"", path.Base(requestedFile.Name())))
+		c.Writer.Header().Set("content-disposition", fmt.Sprintf("attachment; filename=\"%s\"", path.Base(requestedFile.Name())+".RAW"))
 		c.FileFromFS(requestedFile.Name(), fs)
 		return
 	}
@@ -264,6 +266,41 @@ func saveSampleFile(c *gin.Context) {
 		return
 	}
 
+	dir, err := afero.IsDir(dataFS, data.File)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	if dir {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid path. path is a directory",
+		})
+		return
+	}
+
+	fileType, exists := c.GetQuery("type")
+	if !exists {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "requested file type not specified",
+		})
+		return
+	}
+	var fileExtension string
+	fileType = strings.ToLower(fileType)
+	switch fileType {
+	case "seg2":
+		fileExtension = ".DAT"
+	case "raw":
+		fileExtension = ".RAW"
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid file type",
+		})
+		return
+	}
+
 	connectedUSB, err := getAllUSB()
 	if connectedUSB.MountPoint == "" || err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -291,35 +328,40 @@ func saveSampleFile(c *gin.Context) {
 
 	force := strings.ToLower(c.Query("force")) != "" && strings.ToLower(c.Query("force")) == "true"
 	usbFS = afero.NewBasePathFs(usbFS, pathPrefix)
-	if fileExists, _ := afero.Exists(usbFS, data.File); fileExists && !force {
+	if fileExists, _ := afero.Exists(usbFS, data.File+fileExtension); fileExists && !force {
 		c.JSON(http.StatusConflict, gin.H{
 			"error": "file exists and not forced",
 		})
 		return
 	}
 	usbFS.MkdirAll(path.Dir(data.File), os.ModeDir|0755)
-	dst, err := usbFS.Create(data.File + ".DAT")
+	dst, err := usbFS.Create(data.File + fileExtension)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
+	switch fileType {
+	case "seg2":
+		byteRes, err := extractData(requestedFile)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
 
-	byteRes, err := extractData(requestedFile)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
+		traces := seg2.NewTraceDescriptor(make([]string, len(byteRes)), byteRes, seg2.Fixed32)
+		w := seg2.NewWriter(time.Now(), int16(len(traces)), "")
+		_ = w.Write(dst, traces)
+		c.JSON(http.StatusOK, gin.H{
+			"files": []string{data.File},
 		})
-		return
+	case "raw":
+		io.Copy(dst, requestedFile)
+		c.JSON(http.StatusOK, nil)
 	}
-
-	traces := seg2.NewTraceDescriptor(make([]string, len(byteRes)), byteRes, seg2.Fixed32)
-	w := seg2.NewWriter(time.Now(), int16(len(traces)), "")
-	_ = w.Write(dst, traces)
-	c.JSON(http.StatusOK, gin.H{
-		"files": []string{data.File},
-	})
 }
 
 func saveProjectFolder(c *gin.Context) {
@@ -330,6 +372,27 @@ func saveProjectFolder(c *gin.Context) {
 	if err := c.BindJSON(&data); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
+		})
+		return
+	}
+
+	fileType, exists := c.GetQuery("type")
+	if !exists {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "requested file type not specified",
+		})
+		return
+	}
+	var fileExtension string
+	fileType = strings.ToLower(fileType)
+	switch fileType {
+	case "seg2":
+		fileExtension = ".DAT"
+	case "raw":
+		fileExtension = ".RAW"
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid file type",
 		})
 		return
 	}
@@ -376,15 +439,24 @@ func saveProjectFolder(c *gin.Context) {
 		switch mode := f.Mode(); {
 		case mode.IsRegular():
 			src, _ := dataFS.Open(srcPath)
-			dst, _ := usbFS.Create(srcPath + ".DAT")
-			byteRes, err := extractData(src)
-			if err != nil {
-				return err
+			dst, _ := usbFS.Create(srcPath + fileExtension)
+			switch fileType {
+			case "seg2":
+				byteRes, err := extractData(src)
+				if err != nil {
+					return err
+				}
+				traces := seg2.NewTraceDescriptor(make([]string, len(byteRes)), byteRes, seg2.Fixed32)
+				w := seg2.NewWriter(time.Now(), int16(len(traces)), "")
+				_ = w.Write(dst, traces)
+			case "raw":
+				_, err := io.Copy(dst, src)
+				if err != nil {
+					return err
+				}
 			}
-			traces := seg2.NewTraceDescriptor(make([]string, len(byteRes)), byteRes, seg2.Fixed32)
-			w := seg2.NewWriter(time.Now(), int16(len(traces)), "")
-			_ = w.Write(dst, traces)
 			copiedList = append(copiedList, srcPath)
+
 		case mode.IsDir():
 			if err := usbFS.Mkdir(srcPath, f.Mode()); err != nil && !os.IsExist(err) {
 				return err
