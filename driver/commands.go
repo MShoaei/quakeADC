@@ -831,7 +831,7 @@ type ChannelOffsetOpts struct {
 	Channel uint8
 
 	// MSB, Mid, LSB
-	Offset [3]int8
+	Offset [3]uint8
 }
 
 func (adc Adc7768) ChannelOffset(opts ChannelOffsetOpts, cs uint8, debug bool) (err error) {
@@ -848,7 +848,7 @@ func (adc Adc7768) ChannelOffset(opts ChannelOffsetOpts, cs uint8, debug bool) (
 
 	register := Ch0OffsetMSB + (opts.Channel * 3)
 	for i := uint8(0); i < 3; i++ {
-		tx = []byte{h | (register + i), uint8(opts.Offset[i])}
+		tx = []byte{h | (register + i), opts.Offset[i]}
 
 		err = adc.Write(tx, cs)
 		if err != nil {

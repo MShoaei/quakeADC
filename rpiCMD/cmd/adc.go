@@ -657,6 +657,7 @@ func newAdcNegativeRefPrechargeBufCommand() *cobra.Command {
 
 	return cmd
 }
+
 func newAdcChannelOffsetCommand() *cobra.Command {
 	options := driver.ChannelOffsetOpts{}
 	cmd := &cobra.Command{
@@ -672,9 +673,9 @@ func newAdcChannelOffsetCommand() *cobra.Command {
 	f.SortFlags = false
 	f.BoolVar(&options.Write, "write", false, "set the write bit")
 	f.Uint8Var(&options.Channel, "ch", 255, "select channel to set offset: ch: [0..7]")
-	f.Int8Var(&options.Offset[0], "MSB", 0, "Channel 'ch' offset MSB signed 8 bit integer (default: 0)")
-	f.Int8Var(&options.Offset[1], "Mid", 0, "Channel 'ch' offset Mid signed 8 bit integer (default: 0)")
-	f.Int8Var(&options.Offset[2], "LSB", 0, "Channel 'ch' offset LSB signed 8 bit integer (default: 0)")
+	f.Uint8Var(&options.Offset[0], "MSB", 0, "Channel 'ch' offset MSB unsigned 8 bit integer (default: 0)")
+	f.Uint8Var(&options.Offset[1], "Mid", 0, "Channel 'ch' offset Mid unsigned 8 bit integer (default: 0)")
+	f.Uint8Var(&options.Offset[2], "LSB", 0, "Channel 'ch' offset LSB unsigned 8 bit integer (default: 0)")
 
 	return cmd
 }

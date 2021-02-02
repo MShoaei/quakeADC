@@ -93,6 +93,9 @@ func readWithThreshold(threshold int, duration int, channel int) []byte {
 	case 3:
 		mask = logic1DataOut3Mask
 		shift = 2
+	case 4:
+		mask = logic1DataOut4Mask
+		shift = 3
 	case 5:
 		mask = logic1DataOut5Mask
 		shift = 0

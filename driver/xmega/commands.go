@@ -148,7 +148,7 @@ func DetectLogicConnString(conn spi.Connection) (list []string, err error) {
 
 	list = []string{
 		devices[2].Name(),
-		devices[3].Name(),
+		// devices[3].Name(),
 		// devices[4].Name(),
 	}
 
