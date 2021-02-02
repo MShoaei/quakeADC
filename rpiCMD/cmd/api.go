@@ -46,7 +46,13 @@ type headerData struct {
 	Window          int        `json:"Window"`
 }
 
-var hd headerData
+var hd headerData = headerData{
+	Gains: [24]uint32{
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+	},
+}
 
 type usbDevice struct {
 	Name       string      `json:"name"`
@@ -118,6 +124,14 @@ func NewAPI() *gin.Engine {
 	api.GET("/gains", getGainsHandler)
 	api.POST("/gains", setGainsHandler)
 	api.GET("/info", boardInfoHandler)
+	api.POST("/calibrate", func(c *gin.Context) {
+		cilabrateChOffset()
+		for i := 0; i < len(hd.EnabledChannels); i++ {
+			hd.EnabledChannels[i] = true
+			hd.Gains[i] = 1000
+		}
+		c.Status(http.StatusOK)
+	})
 
 	api.POST("/save/project", saveProjectFolder)
 	api.POST("/save/sample", saveSampleFile)
@@ -1920,6 +1934,9 @@ func getAllUSB() (usbDevice, error) {
 				}
 			}
 		}
+	}
+	if connectedUSB.MountPoint == "" {
+		return connectedUSB, fmt.Errorf("USB not found")
 	}
 	return connectedUSB, status.Error
 }
