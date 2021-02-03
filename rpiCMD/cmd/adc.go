@@ -6,8 +6,6 @@ import (
 	"github.com/MShoaei/quakeADC/driver"
 	"github.com/spf13/cobra"
 	flag "github.com/spf13/pflag"
-	"periph.io/x/periph/conn/gpio"
-	"periph.io/x/periph/host/bcm283x"
 )
 
 var chipSelect uint8
@@ -890,11 +888,6 @@ func newAdcHardResetCommand() *cobra.Command {
 		},
 	}
 	return cmd
-}
-
-func SendSyncSignal() {
-	bcm283x.GPIO7.FastOut(gpio.Low)
-	bcm283x.GPIO7.FastOut(gpio.High)
 }
 
 func init() {

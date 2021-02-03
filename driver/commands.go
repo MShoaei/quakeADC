@@ -1,10 +1,17 @@
 package driver
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"log"
+	"os"
+	"path"
+	"time"
 
 	flag "github.com/spf13/pflag"
+	"periph.io/x/periph/conn/gpio"
+	"periph.io/x/periph/host/bcm283x"
 )
 
 type ChStandbyOpts struct {
@@ -1141,4 +1148,93 @@ func (adc *Adc7768) HardReset(_ *flag.FlagSet) (_ []byte, _ []byte, err error) {
 	//	return nil, nil, err
 	//}
 	//return nil, nil, nil
+}
+
+func (adc *Adc7768) CilabrateChOffset(logicString string, debug bool) {
+	const MSBMask uint32 = 0x00ff0000
+	const MidMask uint32 = 0x0000ff00
+	const LSBMask uint32 = 0x000000ff
+	gainOpts := ChannelGainOpts{Write: true}
+	for i := 0; i < 24; i++ {
+		gainOpts.Channel = uint8(i) % 8
+		val := uint32(1000 * 1000)
+		gainOpts.Offset[0] = uint8((val & MSBMask) >> 16)
+		gainOpts.Offset[1] = uint8((val & MidMask) >> 8)
+		gainOpts.Offset[2] = uint8(val & LSBMask)
+		adc.ChannelGain(gainOpts, uint8(i/8)+1, debug)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	offsetOpts := ChannelOffsetOpts{Write: true}
+	for i := 0; i < 24; i++ {
+		offsetOpts.Channel = uint8(i) % 8
+		adc.ChannelOffset(offsetOpts, uint8(i/8)+1, debug)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	ChOpts := ChStandbyOpts{
+		Write:    true,
+		Channels: [8]bool{},
+	}
+	enabledCh := [24]bool{}
+	for i := 0; i < 24; i++ {
+		enabledCh[i] = true
+		ChOpts.Channels[i%8] = false
+		if i%8 == 7 {
+			if i < 8 {
+				ChOpts.Channels[0] = false
+			}
+			log.Println(ChOpts, uint8(i/8)+1)
+			adc.ChStandby(ChOpts, uint8(i/8)+1)
+			ChOpts.Channels = [8]bool{}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+
+	SamplingStart(adc.Connection())
+
+	homePath, _ := os.UserHomeDir()
+	tempFilePath1 := path.Join(homePath, "quakeWorkingDir", "temp", "data1.raw")
+	if err := execSigrokCLI(tempFilePath1, logicString, 1024); err != nil {
+		log.Printf("failed to record data: %v", err)
+		return
+	}
+	buf := bytes.NewBuffer(make([]byte, 0, 1024*24*4))
+	file1, _ := os.Open(tempFilePath1)
+	stat1, _ := file1.Stat()
+	Convert(file1, buf, int(stat1.Size()), enabledCh)
+	file1.Close()
+
+	SamplingEnd(adc.Connection())
+
+	total := make([]int, 24)
+	data := buf.Bytes()
+	for i := 0; i < len(data); i += 4 * 24 {
+		for j := 0; j < 24 && i+4+j*4 < len(data); j++ {
+			offset := i + j*4
+			total[j] += int(int32(binary.LittleEndian.Uint32([]byte{data[offset], data[offset+1], data[offset+2], data[offset+3]})))
+		}
+	}
+	for i := 0; i < len(total); i++ {
+		total[i] = total[i] / 1024
+	}
+
+	log.Println(total)
+
+	offsetOpts = ChannelOffsetOpts{Write: true}
+	for i := 0; i < 24; i++ {
+		offsetOpts.Channel = uint8(i) % 8
+		val := uint32(int32(float32(total[i]) * 4.2))
+		offsetOpts.Offset[0] = uint8((val & MSBMask) >> 16)
+		offsetOpts.Offset[1] = uint8((val & MidMask) >> 8)
+		offsetOpts.Offset[2] = uint8(val & LSBMask)
+		log.Println(offsetOpts.Offset)
+		adc.ChannelOffset(offsetOpts, uint8(i/8)+1, debug)
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+func SendSyncSignal() {
+	bcm283x.GPIO7.FastOut(gpio.Low)
+	bcm283x.GPIO7.FastOut(gpio.High)
 }

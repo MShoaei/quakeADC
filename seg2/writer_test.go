@@ -25,13 +25,13 @@ func Test_writer_Write(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := writer{
-				dateTime: tt.fields.dateTime,
-				n:        tt.fields.n,
-				note:     tt.fields.note,
-				w:        tt.fields.w,
-			}
-			s.Write(tt.args.in0)
+			// s := writer{
+			// 	dateTime: tt.fields.dateTime,
+			// 	n:        tt.fields.n,
+			// 	note:     tt.fields.note,
+			// 	w:        tt.fields.w,
+			// }
+			// s.Write(tt.args.in0)
 		})
 	}
 }

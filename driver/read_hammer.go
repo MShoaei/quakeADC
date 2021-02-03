@@ -1,12 +1,11 @@
-package cmd
+package driver
 
 import (
 	"fmt"
 	"log"
 	"time"
-	"unsafe"
 
-	"github.com/google/gousb"
+	"github.com/MShoaei/quakeADC/driver/usb"
 )
 
 var (
@@ -14,66 +13,14 @@ var (
 	tempBuf  = make([]byte, tempSize*maxPacketSize, tempSize*maxPacketSize)
 )
 
-func readWithThreshold(threshold int, duration int, channel int) []byte {
-	ctx := gousb.NewContext()
-	defer ctx.Close()
-	vid, pid := gousb.ID(0x0925), gousb.ID(0x3881)
-	devs, err := ctx.OpenDevices(func(desc *gousb.DeviceDesc) bool {
-		// this function is called for every device present.
-		// Returning true means the device should be opened.
-		return desc.Vendor == vid && desc.Product == pid
-	})
-	// All returned devices are now open and will need to be closed.
-	for _, d := range devs {
-		defer d.Close()
-	}
-	if err != nil {
-		log.Fatalf("OpenDevices(): %v", err)
-	}
-	if len(devs) == 0 {
-		log.Fatalf("no devices found matching VID %s and PID %s", vid, pid)
-	}
-
-	dev := devs[0]
-
-	cfg, err := dev.Config(1)
-	if err != nil {
-		log.Fatalf("%s.Config(1): %v", dev, err)
-	}
-	defer cfg.Close()
-
-	cmd := cmdStartAcquisition{}
-	cmd.Flags = cmdStartFlagsCLK48MHZ
-	cmd.Flags |= cmdStartFlagsSample8Bit
-	cmd.Flags |= 0 // not using analog channels
-	cmd.SampleDelayH = (delay >> 8) & 0xff
-	cmd.SampleDelayL = delay & 0xff
-
-	const sz = int(unsafe.Sizeof(cmdStartAcquisition{}))
-	var asByteSlice []byte = (*(*[sz]byte)(unsafe.Pointer(&cmd)))[:]
-
-	num, err := dev.Control(gousb.ControlVendor|gousb.ControlOut, 0xb1, 0, 0, asByteSlice)
-	if num != 3 || err != nil {
-		log.Fatalln(err)
-	}
-
-	intf, err := cfg.Interface(0, 0)
-	if err != nil {
-		log.Fatalf("%s.Interface(0, 0): %v", cfg, err)
-	}
-	defer intf.Close()
-
-	epIn, err := intf.InEndpoint(2)
-	if err != nil {
-		log.Fatalf("%s.InEndpoint(2): %v", intf, err)
-	}
-	log.Println(epIn.Desc.MaxPacketSize)
-
-	var stream *gousb.ReadStream
-	stream, err = epIn.NewStream(512*10, 1000)
+func ReadWithThreshold(threshold int, duration int, channel int) []byte {
+	streamConnection, err := usb.NewReadStream()
 	if err != nil {
 		log.Fatalf("failed to create ReadStream: %v", err)
 	}
+	defer streamConnection.Close()
+
+	stream := streamConnection.Stream
 
 	size := duration * 24000 / 512
 	buf := make([]byte, size*maxPacketSize, size*maxPacketSize)

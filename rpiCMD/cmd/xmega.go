@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/MShoaei/quakeADC/driver"
-	"github.com/MShoaei/quakeADC/driver/xmega"
 	"github.com/spf13/cobra"
 	"gobot.io/x/gobot/drivers/spi"
 )
@@ -43,7 +42,7 @@ var xmegaReset = &cobra.Command{
 	Use:   "reset",
 	Short: "reset xmega if it is unresponsive",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return xmega.Reset()
+		return driver.Reset()
 	},
 }
 

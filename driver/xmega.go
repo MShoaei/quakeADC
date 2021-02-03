@@ -1,4 +1,4 @@
-package xmega
+package driver
 
 import (
 	"fmt"
@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/MShoaei/quakeADC/driver"
 	"github.com/spf13/afero"
 	"gobot.io/x/gobot/drivers/spi"
 	"periph.io/x/periph/conn/gpio"
@@ -31,9 +30,9 @@ func Shutdown(conn spi.Connection) {
 	tx = []byte{uint8(0x02), uint8(0x02), 0}
 	rx := make([]byte, 3)
 
-	_ = driver.EnableChipSelect(0)
+	_ = EnableChipSelect(0)
 	_ = conn.Tx(tx, rx)
-	_ = driver.DisableChipSelect(0)
+	_ = DisableChipSelect(0)
 }
 
 type status int
@@ -53,11 +52,11 @@ func StatusLED(conn spi.Connection, s status) error {
 	}
 	rx := make([]byte, 3)
 
-	_ = driver.EnableChipSelect(0)
+	_ = EnableChipSelect(0)
 	if err := conn.Tx(tx, rx); err != nil {
 		return fmt.Errorf("failed to set led status: %v", err)
 	}
-	_ = driver.DisableChipSelect(0)
+	_ = DisableChipSelect(0)
 	return nil
 }
 
@@ -66,11 +65,11 @@ func TurnOnAllADC(conn spi.Connection) error {
 	tx = []byte{uint8(0x05), uint8(0x07), 0}
 	rx := make([]byte, 3)
 
-	_ = driver.EnableChipSelect(0)
+	_ = EnableChipSelect(0)
 	if err := conn.Tx(tx, rx); err != nil {
 		return fmt.Errorf("reset all adcs failed: %v", err)
 	}
-	_ = driver.DisableChipSelect(0)
+	_ = DisableChipSelect(0)
 	return nil
 }
 
@@ -79,11 +78,11 @@ func ResetAllADC(conn spi.Connection) error {
 	tx = []byte{uint8(0x01), uint8(0x01), 0}
 	rx := make([]byte, 3)
 
-	_ = driver.EnableChipSelect(0)
+	_ = EnableChipSelect(0)
 	if err := conn.Tx(tx, rx); err != nil {
 		return fmt.Errorf("reset all adcs failed: %v", err)
 	}
-	_ = driver.DisableChipSelect(0)
+	_ = DisableChipSelect(0)
 	return nil
 }
 
@@ -92,11 +91,11 @@ func EnableMCLK(conn spi.Connection) error {
 	tx = []byte{uint8(0x02), uint8(0x01), 0}
 	rx := make([]byte, 3)
 
-	_ = driver.EnableChipSelect(0)
+	_ = EnableChipSelect(0)
 	if err := conn.Tx(tx, rx); err != nil {
 		return fmt.Errorf("enabling MCLK failed: %v", err)
 	}
-	_ = driver.DisableChipSelect(0)
+	_ = DisableChipSelect(0)
 	return nil
 }
 
@@ -106,35 +105,35 @@ func DetectLogicConnString(conn spi.Connection) (list []string, err error) {
 	rx := make([]byte, 3)
 
 	tx = []byte{uint8(0x01), uint8(0x00), 0}
-	_ = driver.EnableChipSelect(0)
+	_ = EnableChipSelect(0)
 	if err = conn.Tx(tx, rx); err != nil {
 		return nil, fmt.Errorf("failed to reset all logic analyzers: %v", err)
 	}
-	_ = driver.DisableChipSelect(0)
+	_ = DisableChipSelect(0)
 	time.Sleep(1 * time.Second)
 	// --------------------------------------
 	tx = []byte{uint8(0x01), uint8(0x02), 0}
-	_ = driver.EnableChipSelect(0)
+	_ = EnableChipSelect(0)
 	if err = conn.Tx(tx, rx); err != nil {
 		return nil, fmt.Errorf("failed to enable logic 1: %v", err)
 	}
-	_ = driver.DisableChipSelect(0)
+	_ = DisableChipSelect(0)
 	time.Sleep(1 * time.Second)
 	// --------------------------------------
 	tx = []byte{uint8(0x01), uint8(0x06), 0}
-	_ = driver.EnableChipSelect(0)
+	_ = EnableChipSelect(0)
 	if err = conn.Tx(tx, rx); err != nil {
 		return nil, fmt.Errorf("failed to enable logic 2: %v", err)
 	}
-	_ = driver.DisableChipSelect(0)
+	_ = DisableChipSelect(0)
 	time.Sleep(1 * time.Second)
 	// --------------------------------------
 	tx = []byte{uint8(0x01), uint8(0x0e), 0}
-	_ = driver.EnableChipSelect(0)
+	_ = EnableChipSelect(0)
 	if err = conn.Tx(tx, rx); err != nil {
 		return nil, fmt.Errorf("failed to enable logic 3: %v", err)
 	}
-	_ = driver.DisableChipSelect(0)
+	_ = DisableChipSelect(0)
 	// --------------------------------------
 	exec.Command("sigrok-cli", "--scan").Run()
 	time.Sleep(1 * time.Second)
@@ -161,9 +160,9 @@ func ReadID(conn spi.Connection) {
 	tx := []byte{uint8(0x88), uint8(0), 0}
 	rx := make([]byte, 3)
 
-	_ = driver.EnableChipSelect(0)
+	_ = EnableChipSelect(0)
 	conn.Tx(tx, rx)
-	_ = driver.DisableChipSelect(0)
+	_ = DisableChipSelect(0)
 	log.Println(rx)
 }
 
@@ -171,9 +170,9 @@ func SamplingStart(conn spi.Connection) {
 	tx := []byte{uint8(0x10), uint8(0x42), 0}
 	rx := make([]byte, 3)
 
-	_ = driver.EnableChipSelect(0)
+	_ = EnableChipSelect(0)
 	conn.Tx(tx, rx)
-	_ = driver.DisableChipSelect(0)
+	_ = DisableChipSelect(0)
 	log.Println(rx)
 }
 
@@ -181,9 +180,9 @@ func SamplingEnd(conn spi.Connection) {
 	tx := []byte{uint8(0x10), uint8(0x02), 0}
 	rx := make([]byte, 3)
 
-	_ = driver.EnableChipSelect(0)
+	_ = EnableChipSelect(0)
 	conn.Tx(tx, rx)
-	_ = driver.DisableChipSelect(0)
+	_ = DisableChipSelect(0)
 	log.Println(rx)
 }
 
@@ -197,30 +196,30 @@ func GetVoltage(conn spi.Connection) []int16 {
 			continue
 		}
 		tx = []byte{uint8(0x0b), 0x04 | i, 0}
-		_ = driver.EnableChipSelect(0)
+		_ = EnableChipSelect(0)
 		_ = conn.Tx(tx, rx)
-		_ = driver.DisableChipSelect(0)
+		_ = DisableChipSelect(0)
 		time.Sleep(100 * time.Millisecond)
 
 		for j := uint8(2); j < 8; j += 2 {
 			tx = []byte{uint8(0x0c), j, 0}
-			_ = driver.EnableChipSelect(0)
+			_ = EnableChipSelect(0)
 			_ = conn.Tx(tx, rx)
-			_ = driver.DisableChipSelect(0)
+			_ = DisableChipSelect(0)
 			time.Sleep(100 * time.Millisecond)
 
 			var value int16
 			tx = []byte{uint8(0x8d), 0, 0}
-			_ = driver.EnableChipSelect(0)
+			_ = EnableChipSelect(0)
 			_ = conn.Tx(tx, rx)
-			_ = driver.DisableChipSelect(0)
+			_ = DisableChipSelect(0)
 			time.Sleep(100 * time.Millisecond)
 			value = int16(rx[2]) << 8
 
 			tx = []byte{uint8(0x8e), 0, 0}
-			_ = driver.EnableChipSelect(0)
+			_ = EnableChipSelect(0)
 			_ = conn.Tx(tx, rx)
-			_ = driver.DisableChipSelect(0)
+			_ = DisableChipSelect(0)
 			time.Sleep(100 * time.Millisecond)
 			value |= int16(rx[2])
 
@@ -240,30 +239,30 @@ func GetCurrent(conn spi.Connection) []int16 {
 			continue
 		}
 		tx = []byte{uint8(0x0b), 0x04 | i, 0}
-		_ = driver.EnableChipSelect(0)
+		_ = EnableChipSelect(0)
 		_ = conn.Tx(tx, rx)
-		_ = driver.DisableChipSelect(0)
+		_ = DisableChipSelect(0)
 		time.Sleep(100 * time.Millisecond)
 
 		for j := uint8(1); j < 7; j += 2 {
 			tx = []byte{uint8(0x0c), j, 0}
-			_ = driver.EnableChipSelect(0)
+			_ = EnableChipSelect(0)
 			_ = conn.Tx(tx, rx)
-			_ = driver.DisableChipSelect(0)
+			_ = DisableChipSelect(0)
 			time.Sleep(100 * time.Millisecond)
 
 			var value int16
 			tx = []byte{uint8(0x8d), 0, 0}
-			_ = driver.EnableChipSelect(0)
+			_ = EnableChipSelect(0)
 			_ = conn.Tx(tx, rx)
-			_ = driver.DisableChipSelect(0)
+			_ = DisableChipSelect(0)
 			time.Sleep(100 * time.Millisecond)
 			value = int16(rx[2]) << 8
 
 			tx = []byte{uint8(0x8e), 0, 0}
-			_ = driver.EnableChipSelect(0)
+			_ = EnableChipSelect(0)
 			_ = conn.Tx(tx, rx)
-			_ = driver.DisableChipSelect(0)
+			_ = DisableChipSelect(0)
 			time.Sleep(100 * time.Millisecond)
 			value |= int16(rx[2])
 

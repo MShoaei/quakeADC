@@ -13,5 +13,6 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
 	gobot.io/x/gobot v1.15.0
+	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4 // indirect
 	periph.io/x/periph v3.6.7+incompatible
 )
