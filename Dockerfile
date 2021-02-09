@@ -1,15 +1,18 @@
-FROM golang:1.13-alpine as builder
+FROM golang:1.15-alpine as builder
 WORKDIR /app
-RUN apk add --no-cache g++ gcc libpcap-dev
 COPY go.* ./
 RUN go mod download
+RUN apk update 
+RUN apk add --no-cache gcc libusb-dev musl-dev
 COPY . .
 #RUN go build -ldflags '-extldflags "-static"' -o qADC ./rpiCMD/main.go
-RUN go build -o qADC ./rpiCMD/main.go
+RUN go build -o quakeBinary ./rpiCMD/
 
 FROM alpine:latest
-RUN apk update && apk add libpcap-dev
-COPY --from=builder /app/qADC /usr/bin/qADC
-ENTRYPOINT ["/usr/bin/qADC"]
+RUN apk update && apk add libusb-dev
+COPY --from=builder /app/quakeBinary /usr/bin/rpiCMD
+RUN chmod +x /usr/bin/rpiCMD
+ENV PORT=9090
+ENTRYPOINT ["/usr/bin/rpiCMD"]
 EXPOSE 9090
-CMD ["server"]
+CMD ["server", "--skip"]
