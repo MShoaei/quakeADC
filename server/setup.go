@@ -19,7 +19,7 @@ import (
 	"github.com/spf13/afero"
 )
 
-func (s *server) setGainsHandler(c *gin.Context) {
+func (s *server) SetGainsHandler(c *gin.Context) {
 	const MSBMask uint32 = 0x00ff0000
 	const MidMask uint32 = 0x0000ff00
 	const LSBMask uint32 = 0x000000ff
@@ -52,13 +52,13 @@ func (s *server) setGainsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, nil)
 }
 
-func (s *server) getGainsHandler(c *gin.Context) {
+func (s *server) GetGainsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"gains": s.hd.Gains,
 	})
 }
 
-func (s *server) setChannelsHandler(c *gin.Context) {
+func (s *server) SetChannelsHandler(c *gin.Context) {
 	ch := [24]bool{}
 	if err := c.BindJSON(&ch); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -96,14 +96,14 @@ func (s *server) setChannelsHandler(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func (s *server) getChannelsHandler(c *gin.Context) {
+func (s *server) GetChannelsHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"channels": s.hd.EnabledChannels,
 	})
 }
 
-func (s *server) setupHandler(c *gin.Context) {
+func (s *server) SetupHandler(c *gin.Context) {
 	if s.sigrokRunning {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"error": "sampling is already running",
@@ -164,12 +164,16 @@ func (s *server) setupHandler(c *gin.Context) {
 		driver.SendSyncSignal()
 		driver.SamplingStart(s.adc.Connection())
 		defer driver.SamplingEnd(s.adc.Connection())
-		if err := driver.ExecSigrokCLI(s.logics[0], setupData.RecordTime); err != nil {
+		f, size, err := driver.ExecSigrokCLI(s.logics[0], setupData.RecordTime)
+		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": err.Error(),
 			})
 			return
 		}
+		defer f.Close()
+
+		driver.Convert(f, s.dataFile, int(size), s.hd.EnabledChannels)
 		c.JSON(http.StatusOK, nil)
 		return
 	case "hammer":
@@ -202,7 +206,7 @@ func (s *server) setupHandler(c *gin.Context) {
 	}
 }
 
-func (s *server) readDataHandler(c *gin.Context) {
+func (s *server) ReadDataHandler(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Println("WebSocket creation error: ", err)
@@ -254,7 +258,7 @@ func (s *server) readDataHandler(c *gin.Context) {
 	_ = conn.Close()
 }
 
-func (s *server) readDataPostHandler(c *gin.Context) {
+func (s *server) ReadDataPostHandler(c *gin.Context) {
 	form := struct {
 		File string `json:"file"`
 	}{}

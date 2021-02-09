@@ -5,8 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
-	"os"
-	"path"
 	"time"
 
 	flag "github.com/spf13/pflag"
@@ -1193,16 +1191,15 @@ func (adc *Adc7768) CilabrateChOffset(logicString string, debug bool) {
 
 	SamplingStart(adc.Connection())
 
-	homePath, _ := os.UserHomeDir()
-	tempFilePath1 := path.Join(homePath, "quakeWorkingDir", "temp", "data1.raw")
-	if err := execSigrokCLI(tempFilePath1, logicString, 1024); err != nil {
+	file1, size, err := ExecSigrokCLI(logicString, 1024)
+	if err != nil {
 		log.Printf("failed to record data: %v", err)
 		return
 	}
+	defer file1.Close()
+
 	buf := bytes.NewBuffer(make([]byte, 0, 1024*24*4))
-	file1, _ := os.Open(tempFilePath1)
-	stat1, _ := file1.Stat()
-	Convert(file1, buf, int(stat1.Size()), enabledCh)
+	Convert(file1, buf, int(size), enabledCh)
 	file1.Close()
 
 	SamplingEnd(adc.Connection())

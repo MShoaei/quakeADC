@@ -54,10 +54,22 @@ func execSigrokCLI(dstPath string, logicConnDigit string, duration int) error {
 	return nil
 }
 
-func ExecSigrokCLI(logicConnDigit string, duration int) error {
-	homePath, _ := os.UserHomeDir()
-	tempFilePath1 := path.Join(homePath, "quakeWorkingDir", "temp", "data1.raw")
-	return execSigrokCLI(tempFilePath1, logicConnDigit, duration)
+func ExecSigrokCLI(logicConnDigit string, duration int) (io.ReadCloser, int64, error) {
+	wd, _ := os.Getwd()
+	tempFilePath1 := path.Join(wd, "temp", "data1.raw")
+
+	err := execSigrokCLI(tempFilePath1, logicConnDigit, duration)
+	if err != nil {
+		return nil, 0, err
+	}
+	f, err := os.Open(tempFilePath1)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	stat, _ := f.Stat()
+
+	return f, stat.Size(), err
 }
 
 var (
@@ -86,7 +98,6 @@ func Convert(reader1 io.Reader, writer io.Writer, size int, channels [24]bool) {
 	if reader1 != nil {
 		buffer1.Reset()
 		buffer1.Grow(int(size))
-
 	}
 
 	var line []byte
