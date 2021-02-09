@@ -6,4 +6,5 @@ rpiCMD
 !rpiCMD/
 vendor/
 
+data/
 testdata/
