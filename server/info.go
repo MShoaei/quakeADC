@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (s *server) boardInfoHandler(c *gin.Context) {
+func (s *server) BoardInfoHandler(c *gin.Context) {
 	type message struct {
 		Voltage []int16 `json:"voltage"`
 		Current []int16 `json:"current"`
@@ -21,7 +21,7 @@ func (s *server) boardInfoHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, &m)
 }
 
-func (s *server) samplingStatusHandler(c *gin.Context) {
+func (s *server) SamplingStatusHandler(c *gin.Context) {
 	if s.sigrokRunning {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"message": "running",

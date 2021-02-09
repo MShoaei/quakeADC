@@ -20,7 +20,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func (s *server) newAPI() *gin.Engine {
+func (s *server) NewAPI() *gin.Engine {
 	api := gin.Default()
 	if s.Debug {
 		api.Any("/api/:path", func(c *gin.Context) {
@@ -31,32 +31,33 @@ func (s *server) newAPI() *gin.Engine {
 	}
 	api.Use(cors.Default())
 
-	api.GET("/status", s.samplingStatusHandler)
+	api.GET("/status", s.SamplingStatusHandler)
 
-	api.GET("/tree/*dir", s.treeHandler)
-	api.DELETE("/tree/*path", s.treeDeleteHandler)
-	api.PATCH("/tree/*path", s.treePatchHandler)
+	api.GET("/tree/*dir", s.TreeHandler)
+	api.DELETE("/tree/*path", s.TreeDeleteHandler)
+	api.PATCH("/tree/*path", s.TreePatchHandler)
+	api.POST("/tree", s.CreateNewProject)
 
-	api.GET("/plot", s.readDataHandler)
-	api.POST("/plot", s.readDataPostHandler)
+	api.GET("/plot", s.ReadDataHandler)
+	api.POST("/plot", s.ReadDataPostHandler)
 
 	api.GET("/dl/*path", func(c *gin.Context) {
 		c.Header("cache-control", "no-store, max-age=0")
 	}, s.DownloadSampleHandler)
 
-	api.POST("/setup", s.setupHandler)
-	api.POST("/command/:cmd/:adc", s.commandHandler)
-	api.GET("/getfile", s.getFileHandler)
+	api.POST("/setup", s.SetupHandler)
+	api.POST("/command/:cmd/:adc", s.CommandHandler)
+	api.GET("/getfile", s.GetFileHandler)
 
 	api.GET("/usb", s.GetAllUSBHandler)
 
-	api.POST("/rpi/shutdown", s.shutdownSequenceHandler)
-	api.POST("/rpi/restart", s.restartSequenceHandler)
-	api.GET("/channels", s.getChannelsHandler)
-	api.POST("/channels", s.setChannelsHandler)
-	api.GET("/gains", s.getGainsHandler)
-	api.POST("/gains", s.setGainsHandler)
-	api.GET("/info", s.boardInfoHandler)
+	api.POST("/rpi/shutdown", s.ShutdownSequenceHandler)
+	api.POST("/rpi/restart", s.RestartSequenceHandler)
+	api.GET("/channels", s.GetChannelsHandler)
+	api.POST("/channels", s.SetChannelsHandler)
+	api.GET("/gains", s.GetGainsHandler)
+	api.POST("/gains", s.SetGainsHandler)
+	api.GET("/info", s.BoardInfoHandler)
 	api.POST("/calibrate", func(c *gin.Context) {
 		s.adc.CilabrateChOffset(s.logics[0], s.Debug)
 		for i := 0; i < len(s.hd.EnabledChannels); i++ {

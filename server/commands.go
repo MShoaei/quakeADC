@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (s *server) commandHandler(c *gin.Context) {
+func (s *server) CommandHandler(c *gin.Context) {
 	adc, err := strconv.ParseUint(c.Param("adc"), 10, 8)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{

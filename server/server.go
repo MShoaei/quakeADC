@@ -44,7 +44,7 @@ func NewServer(dataFS, memFS afero.Fs, adcConnection *driver.Adc7768, debug bool
 		memFS:        memFS,
 		GainMultiply: 1000,
 	}
-	s.api = s.newAPI()
+	s.api = s.NewAPI()
 	return s
 }
 
