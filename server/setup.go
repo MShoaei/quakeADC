@@ -173,6 +173,13 @@ func (s *server) SetupHandler(c *gin.Context) {
 		}
 		defer f.Close()
 
+		if err := json.NewEncoder(s.dataFile).Encode(s.hd); err != nil {
+			// this should never happen!
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": fmt.Errorf("error while encoding enabled channels: %v", err).Error(),
+			})
+			return
+		}
 		driver.Convert(f, s.dataFile, int(size), s.hd.EnabledChannels)
 		c.JSON(http.StatusOK, nil)
 		return
@@ -181,6 +188,7 @@ func (s *server) SetupHandler(c *gin.Context) {
 		driver.SendSyncSignal()
 		driver.SamplingStart(s.adc.Connection())
 		defer driver.SamplingEnd(s.adc.Connection())
+
 		rawData := driver.ReadWithThreshold(setupData.TriggerThreshold, setupData.RecordTime, setupData.TriggerChannel)
 		if rawData == nil {
 			c.JSON(http.StatusNotFound, gin.H{
