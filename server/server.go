@@ -6,6 +6,7 @@ import (
 
 	"github.com/MShoaei/quakeADC/driver"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 )
 
@@ -15,12 +16,16 @@ type HeaderData struct {
 	Window          int        `json:"Window"`
 }
 
-type server struct {
+type Server struct {
+	l             *logrus.Logger
 	api           *gin.Engine
 	adc           *driver.Adc7768
 	hd            HeaderData
 	logics        []string
 	sigrokRunning bool
+
+	activePath string
+	activeFS   afero.Fs
 
 	dataFS   afero.Fs
 	memFS    afero.Fs
@@ -30,8 +35,11 @@ type server struct {
 	GainMultiply uint32
 }
 
-func NewServer(dataFS, memFS afero.Fs, adcConnection *driver.Adc7768, debug bool) *server {
-	s := &server{
+// NewServer creates a new server instance with the provided paths
+// and attaches a gin engine to it wich can listen for http requests
+func NewServer(dataFS, memFS afero.Fs, adcConnection *driver.Adc7768, debug bool) *Server {
+	s := &Server{
+		l:   logrus.New(),
 		adc: adcConnection,
 		hd: HeaderData{
 			Gains: [24]uint32{
@@ -40,19 +48,26 @@ func NewServer(dataFS, memFS afero.Fs, adcConnection *driver.Adc7768, debug bool
 				1, 1, 1, 1, 1, 1, 1, 1,
 			},
 		},
+		activePath: "/",
+		activeFS:   dataFS,
+
 		dataFS:       dataFS,
 		memFS:        memFS,
 		GainMultiply: 1000,
+	}
+
+	if debug {
+		s.l.SetLevel(logrus.DebugLevel)
 	}
 	s.api = s.NewAPI()
 	return s
 }
 
-func (s *server) Run(addr ...string) error {
+func (s *Server) Run(addr ...string) error {
 	return s.api.Run(addr...)
 }
 
-func (s *server) HardwareInitSeq() error {
+func (s *Server) HardwareInitSeq() error {
 	driver.ReadID(s.adc.Connection())
 	time.Sleep(100 * time.Millisecond)
 

@@ -20,7 +20,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func (s *server) NewAPI() *gin.Engine {
+func (s *Server) NewAPI() *gin.Engine {
 	api := gin.Default()
 	if s.Debug {
 		api.Any("/api/:path", func(c *gin.Context) {
@@ -37,6 +37,11 @@ func (s *server) NewAPI() *gin.Engine {
 	api.DELETE("/tree/*path", s.TreeDeleteHandler)
 	api.PATCH("/tree/*path", s.TreePatchHandler)
 	api.POST("/tree", s.CreateNewProject)
+	api.GET("/project/active", s.GetActiveProjectPath)
+	api.PATCH("/project/active", s.SetActiveProjectPath)
+
+	api.GET("/wifi/scan", s.ScanNetworks)
+	api.POST("/wifi/connect", s.Connect)
 
 	api.GET("/plot", s.ReadDataHandler)
 	api.POST("/plot", s.ReadDataPostHandler)

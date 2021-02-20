@@ -19,7 +19,7 @@ import (
 	"github.com/spf13/afero"
 )
 
-func (s *server) SetGainsHandler(c *gin.Context) {
+func (s *Server) SetGainsHandler(c *gin.Context) {
 	const MSBMask uint32 = 0x00ff0000
 	const MidMask uint32 = 0x0000ff00
 	const LSBMask uint32 = 0x000000ff
@@ -52,13 +52,13 @@ func (s *server) SetGainsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, nil)
 }
 
-func (s *server) GetGainsHandler(c *gin.Context) {
+func (s *Server) GetGainsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"gains": s.hd.Gains,
 	})
 }
 
-func (s *server) SetChannelsHandler(c *gin.Context) {
+func (s *Server) SetChannelsHandler(c *gin.Context) {
 	ch := [24]bool{}
 	if err := c.BindJSON(&ch); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -96,14 +96,14 @@ func (s *server) SetChannelsHandler(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func (s *server) GetChannelsHandler(c *gin.Context) {
+func (s *Server) GetChannelsHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"channels": s.hd.EnabledChannels,
 	})
 }
 
-func (s *server) SetupHandler(c *gin.Context) {
+func (s *Server) SetupHandler(c *gin.Context) {
 	if s.sigrokRunning {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"error": "sampling is already running",
@@ -214,7 +214,7 @@ func (s *server) SetupHandler(c *gin.Context) {
 	}
 }
 
-func (s *server) ReadDataHandler(c *gin.Context) {
+func (s *Server) ReadDataHandler(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Println("WebSocket creation error: ", err)
@@ -266,7 +266,7 @@ func (s *server) ReadDataHandler(c *gin.Context) {
 	_ = conn.Close()
 }
 
-func (s *server) ReadDataPostHandler(c *gin.Context) {
+func (s *Server) ReadDataPostHandler(c *gin.Context) {
 	form := struct {
 		File string `json:"file"`
 	}{}

@@ -22,7 +22,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func (s *server) DownloadSampleHandler(c *gin.Context) {
+func (s *Server) DownloadSampleHandler(c *gin.Context) {
 	fileType, exists := c.GetQuery("type")
 	if !exists {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -104,7 +104,7 @@ func (s *server) DownloadSampleHandler(c *gin.Context) {
 	}
 }
 
-func (s *server) GetAllUSBHandler(c *gin.Context) {
+func (s *Server) GetAllUSBHandler(c *gin.Context) {
 	devices, err := getAllUSB()
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -146,7 +146,7 @@ func extractData(src io.Reader) ([][]byte, error) {
 	return res, nil
 }
 
-func (s *server) SaveSampleFile(c *gin.Context) {
+func (s *Server) SaveSampleFile(c *gin.Context) {
 	const pathPrefix = "HITECH"
 	data := struct {
 		File string `json:"file"`
@@ -259,7 +259,7 @@ func (s *server) SaveSampleFile(c *gin.Context) {
 	}
 }
 
-func (s *server) SaveProjectFolder(c *gin.Context) {
+func (s *Server) SaveProjectFolder(c *gin.Context) {
 	const pathPrefix = "HITECH"
 	data := struct {
 		Project string `json:"project"`
