@@ -8,6 +8,7 @@ require (
 	github.com/go-cmd/cmd v1.3.0
 	github.com/google/gousb v1.1.1
 	github.com/gorilla/websocket v1.4.2
+	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/afero v1.5.1
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/pflag v1.0.5
