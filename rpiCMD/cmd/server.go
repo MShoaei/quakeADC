@@ -20,8 +20,9 @@ var serverCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		wd, _ := os.Getwd()
 		if err := os.MkdirAll(path.Join(wd, "data"), os.ModeDir|0755); err != nil {
-			log.Fatalf("failed to create directory: %v", err)
+			log.Fatalf("failed to create data directory: %v", err)
 		}
+
 		dataFS := afero.NewBasePathFs(afero.NewOsFs(), path.Join(wd, "data"))
 		memFS := afero.NewMemMapFs()
 
