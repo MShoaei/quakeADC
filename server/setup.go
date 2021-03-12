@@ -118,7 +118,6 @@ func (s *Server) SetupHandler(c *gin.Context) {
 		SamplingTime     float32 `json:"samplingTime"`
 		Window           int     `json:"window"`
 		FileName         string  `json:"fileName"`
-		ProjectName      string  `json:"projectName"`
 	}{}
 	if err := c.BindJSON(&setupData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -135,27 +134,27 @@ func (s *Server) SetupHandler(c *gin.Context) {
 	}
 	s.hd.Window = setupData.Window
 
-	if setupData.FileName == "" || setupData.ProjectName == "" {
+	if setupData.FileName == "" || s.activePath == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "invalid file name or project name",
 		})
 		return
 	}
-	if err := s.dataFS.MkdirAll(setupData.ProjectName, os.ModeDir|0755); err != nil {
+	if err := s.dataFS.MkdirAll(s.activePath, os.ModeDir|0755); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "invalid file project path",
 		})
 		return
 	}
 
-	if exists, _ := afero.Exists(s.dataFS, filepath.Join(setupData.ProjectName, setupData.FileName)); exists {
+	if exists, _ := afero.Exists(s.dataFS, filepath.Join(s.activePath, setupData.FileName)); exists {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "file already exists",
 		})
 		return
 	}
 
-	s.dataFile, _ = s.dataFS.Create(filepath.Join(setupData.ProjectName, setupData.FileName))
+	s.dataFile, _ = s.dataFS.Create(filepath.Join(s.activePath, setupData.FileName))
 	defer s.dataFile.Close()
 
 	switch strings.ToLower(setupData.StartMode) {
